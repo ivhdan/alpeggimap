@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1b2f25">
-    <title>AlpeggiMap — Malghe e Alpeggi del Piemonte</title>
+    <title>AlpeggiMap — Cani da guardiania, Malghe e Rifugi del Piemonte</title>
     <link rel="manifest" href="manifest.json">
 
     <!-- Leaflet -->
@@ -116,7 +116,7 @@
         #map { width: 100%; height: 100%; z-index: 1; }
         .leaflet-tile-pane { filter: saturate(0.8) brightness(1.02); }
         .leaflet-control-zoom { border: none !important; box-shadow: 0 2px 12px rgba(0,0,0,0.25) !important; border-radius: 12px !important; overflow: hidden; }
-        .leaflet-control-zoom a { background: var(--glass) !important; color: var(--text-primary) !important; backdrop-filter: blur(12px); border: none !important; width: 38px !important; height: 38px !important; line-height: 38px !important; font-size: 18px !important; }
+        .leaflet-control-zoom a { background: var(--glass) !important; color: var(--text-primary) !important; backdrop-filter: blur(12px); border: none !important; width: 44px !important; height: 44px !important; line-height: 44px !important; font-size: 22px !important; }
         .leaflet-control-zoom a:hover { background: var(--bg-surface) !important; }
 
         /* ── TOP BAR ─────────────────────── */
@@ -137,12 +137,12 @@
         }
         .app-brand {
             font-family: var(--font-display); font-weight: 700;
-            font-size: 17px; color: var(--accent-primary);
+            font-size: 20px; color: var(--accent-primary);
             white-space: nowrap; letter-spacing: -0.5px;
             display: flex; align-items: center; gap: 6px;
         }
         .app-brand .brand-badge {
-            font-family: var(--font-body); font-weight: 600; font-size: 9px;
+            font-family: var(--font-body); font-weight: 600; font-size: 10px;
             background: rgba(140,198,63,0.15); color: var(--accent-primary);
             padding: 2px 6px; border-radius: 4px; text-transform: uppercase;
             letter-spacing: 0.8px;
@@ -150,17 +150,17 @@
         .search-input {
             flex: 1; min-width: 0; background: none; border: none;
             color: var(--text-primary); font-family: var(--font-body);
-            font-size: 14px; font-weight: 400; outline: none;
+            font-size: 16px; font-weight: 400; outline: none;
         }
         .search-input::placeholder { color: var(--text-muted); }
 
         .btn-icon {
-            width: 40px; height: 40px; border-radius: 12px; border: none;
+            width: 46px; height: 46px; border-radius: 14px; border: none;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; transition: all 0.15s ease; flex-shrink: 0;
         }
         .btn-icon:active { transform: scale(0.9); }
-        .btn-icon svg { width: 19px; height: 19px; }
+        .btn-icon svg { width: 22px; height: 22px; }
 
         .btn-gps { background: var(--accent-primary); color: var(--bg-deep); }
         .btn-gps.tracking { background: var(--accent-sky); animation: pulse-gps 2s infinite; }
@@ -193,17 +193,17 @@
             transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
         }
         .filter-panel.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
-        .filter-title { font-family: var(--font-display); font-size: 17px; color: var(--accent-primary); margin-bottom: 14px; }
+        .filter-title { font-family: var(--font-display); font-size: 20px; color: var(--accent-primary); margin-bottom: 14px; }
         .filter-group { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
         .filter-group-label {
-            width: 100%; font-size: 10px; text-transform: uppercase;
+            width: 100%; font-size: 12px; text-transform: uppercase;
             letter-spacing: 1.6px; color: var(--text-secondary); font-weight: 600; margin-bottom: 2px;
         }
         .filter-chip {
-            padding: 7px 13px; border-radius: 20px;
+            padding: 9px 16px; border-radius: 20px;
             border: 1px solid rgba(234,230,222,0.1);
             background: rgba(234,230,222,0.04); color: var(--text-primary);
-            font-family: var(--font-body); font-size: 13px; font-weight: 400;
+            font-family: var(--font-body); font-size: 15px; font-weight: 400;
             cursor: pointer; transition: all 0.15s;
             display: flex; align-items: center; gap: 5px;
         }
@@ -226,26 +226,47 @@
 
         .sheet-handle { width: 32px; height: 4px; background: rgba(27,47,37,0.15); border-radius: 2px; margin: 10px auto 14px; }
         .sheet-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
-        .sheet-name { font-family: var(--font-display); font-size: 21px; color: var(--bg-deep); line-height: 1.2; flex: 1; font-weight: 700; }
+        .sheet-name { font-family: var(--font-display); font-size: 24px; color: var(--bg-deep); line-height: 1.2; flex: 1; font-weight: 700; }
         .sheet-type-badge {
             display: inline-flex; align-items: center; gap: 4px;
-            padding: 4px 10px; border-radius: 16px;
-            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+            padding: 5px 12px; border-radius: 16px;
+            font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
             flex-shrink: 0;
         }
         .badge-alpeggio { background: rgba(140,198,63,0.12); color: #3d7a1a; }
-        .badge-fattoria { background: rgba(122,92,62,0.1); color: var(--bark); }
         .badge-rifugio { background: rgba(91,164,207,0.12); color: #2a6d96; }
+        .badge-cani { background: rgba(212,75,79,0.12); color: #a03a30; }
+        .badge-unconfirmed { background: rgba(150,150,150,0.12); color: #666; }
+
+        /* Dog report card */
+        .dog-report-card {
+            background: rgba(27,47,37,0.04); border-radius: var(--radius-sm);
+            padding: 4px 0; margin-bottom: 14px;
+        }
+        .dog-report-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 14px; border-bottom: 1px solid rgba(27,47,37,0.06);
+        }
+        .dog-report-row:last-child { border-bottom: none; }
+        .dog-report-row.trail-warning { background: rgba(212,75,79,0.06); }
+        .dog-report-label { font-size: 14px; color: #6b7c72; flex-shrink: 0; margin-right: 12px; }
+        .dog-report-value { font-size: 15px; font-weight: 600; color: var(--text-dark); text-align: right; }
+        .dog-behavior-aggressive { color: #a03a30; }
+        .dog-behavior-alert { color: #b5692a; }
+        .dog-behavior-calm { color: #3d7a1a; }
+
+        .dog-notes { margin-bottom: 14px; }
+        .dog-notes-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: #8a9a8f; font-weight: 700; margin-bottom: 6px; }
+        .dog-notes-text { font-size: 15px; color: var(--text-dark); line-height: 1.5; padding: 10px 14px; background: rgba(27,47,37,0.03); border-radius: var(--radius-sm); border-left: 3px solid var(--accent-gold); }
 
         .sheet-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
-        .meta-item { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #6b7c72; }
-        .meta-item svg { width: 15px; height: 15px; stroke: #8cc63f; }
+        .meta-item { display: flex; align-items: center; gap: 5px; font-size: 15px; color: #6b7c72; }
+        .meta-item svg { width: 17px; height: 17px; stroke: #8cc63f; }
 
         .sheet-section { margin-bottom: 12px; }
-        .sheet-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.4px; color: #8a9a8f; font-weight: 700; margin-bottom: 5px; }
+        .sheet-section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1.4px; color: #8a9a8f; font-weight: 700; margin-bottom: 5px; }
         .sheet-tags { display: flex; flex-wrap: wrap; gap: 5px; }
-        .sheet-tag { padding: 3px 9px; border-radius: 10px; font-size: 12px; font-weight: 600; }
-        .tag-product { background: rgba(232,145,79,0.1); color: #b5692a; }
+        .sheet-tag { padding: 4px 11px; border-radius: 10px; font-size: 14px; font-weight: 600; }
         .tag-animal { background: rgba(140,198,63,0.1); color: #3d7a1a; }
 
         /* Dog warning */
@@ -255,25 +276,25 @@
             border: 1px solid rgba(212,75,79,0.18); border-radius: var(--radius-sm);
             margin-bottom: 12px;
         }
-        .dog-warning-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
-        .dog-warning-text { font-size: 13px; color: #a03a30; line-height: 1.45; }
+        .dog-warning-icon { font-size: 26px; flex-shrink: 0; margin-top: 1px; }
+        .dog-warning-text { font-size: 15px; color: #a03a30; line-height: 1.45; }
         .dog-warning-text strong { display: block; margin-bottom: 2px; }
 
         /* Credibility bar */
         .credibility-bar { margin-bottom: 12px; }
         .credibility-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-        .credibility-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: #8a9a8f; font-weight: 700; }
-        .credibility-value { font-size: 12px; font-weight: 700; }
-        .credibility-track { width: 100%; height: 6px; background: rgba(27,47,37,0.08); border-radius: 3px; overflow: hidden; }
-        .credibility-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+        .credibility-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: #8a9a8f; font-weight: 700; }
+        .credibility-value { font-size: 14px; font-weight: 700; }
+        .credibility-track { width: 100%; height: 8px; background: rgba(27,47,37,0.08); border-radius: 4px; overflow: hidden; }
+        .credibility-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
         .cred-low { background: var(--accent-danger); }
         .cred-mid { background: var(--accent-gold); }
         .cred-high { background: var(--accent-primary); }
 
         .confirm-buttons { display: flex; gap: 8px; margin-bottom: 12px; }
         .btn-confirm, .btn-deny {
-            flex: 1; padding: 10px; border-radius: var(--radius-sm); border: none;
-            font-family: var(--font-body); font-size: 13px; font-weight: 600;
+            flex: 1; padding: 12px; border-radius: var(--radius-sm); border: none;
+            font-family: var(--font-body); font-size: 15px; font-weight: 600;
             cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px;
         }
         .btn-confirm:active, .btn-deny:active { transform: scale(0.96); }
@@ -282,9 +303,9 @@
 
         .sheet-nav-btn {
             display: flex; align-items: center; justify-content: center; gap: 8px;
-            width: 100%; padding: 13px; border-radius: var(--radius-sm); border: none;
+            width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none;
             background: var(--bg-deep); color: var(--text-primary);
-            font-family: var(--font-body); font-size: 14px; font-weight: 600;
+            font-family: var(--font-body); font-size: 16px; font-weight: 600;
             cursor: pointer; transition: all 0.15s;
         }
         .sheet-nav-btn:active { transform: scale(0.98); background: var(--bg-mid); }
@@ -315,7 +336,7 @@
             display: flex; align-items: center; justify-content: space-between;
             padding: 10px 0 14px; border-bottom: 1px solid rgba(27,47,37,0.08); margin-bottom: 16px;
         }
-        .modal-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--bg-deep); }
+        .modal-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--bg-deep); }
         .modal-close {
             width: 32px; height: 32px; border-radius: 50%; border: none;
             background: rgba(27,47,37,0.06); color: #6b7c72;
@@ -323,14 +344,14 @@
         }
 
         .form-group { margin-bottom: 16px; }
-        .form-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #6b7c72; font-weight: 700; margin-bottom: 6px; }
-        .form-hint { font-size: 12px; color: #8a9a8f; margin-top: 4px; line-height: 1.4; }
+        .form-label { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; color: #6b7c72; font-weight: 700; margin-bottom: 6px; }
+        .form-hint { font-size: 14px; color: #8a9a8f; margin-top: 4px; line-height: 1.4; }
 
         .form-input, .form-textarea, .form-select {
-            width: 100%; padding: 11px 14px;
+            width: 100%; padding: 12px 14px;
             border: 1.5px solid rgba(27,47,37,0.12); border-radius: var(--radius-sm);
             background: white; color: var(--text-dark);
-            font-family: var(--font-body); font-size: 14px;
+            font-family: var(--font-body); font-size: 16px;
             outline: none; transition: border-color 0.2s;
         }
         .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--accent-primary); }
@@ -338,9 +359,9 @@
 
         .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
         .radio-option {
-            padding: 9px 14px; border-radius: 12px;
+            padding: 10px 16px; border-radius: 12px;
             border: 1.5px solid rgba(27,47,37,0.1); background: white;
-            font-size: 13px; font-weight: 500; cursor: pointer;
+            font-size: 15px; font-weight: 500; cursor: pointer;
             transition: all 0.15s; display: flex; align-items: center; gap: 6px;
         }
         .radio-option:active { transform: scale(0.96); }
@@ -362,12 +383,12 @@
         }
         .checkbox-box svg { width: 14px; height: 14px; stroke: white; stroke-width: 3; opacity: 0; transition: opacity 0.15s; }
         .checkbox-row.checked .checkbox-box svg { opacity: 1; }
-        .checkbox-label { font-size: 14px; color: var(--text-dark); }
+        .checkbox-label { font-size: 16px; color: var(--text-dark); }
 
         .submit-btn {
             width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none;
             background: var(--accent-danger); color: white;
-            font-family: var(--font-body); font-size: 15px; font-weight: 700;
+            font-family: var(--font-body); font-size: 17px; font-weight: 700;
             cursor: pointer; transition: all 0.15s;
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
@@ -378,11 +399,11 @@
             display: flex; align-items: center; gap: 8px;
             padding: 10px 14px; border-radius: var(--radius-sm);
             background: rgba(91,164,207,0.08); border: 1px solid rgba(91,164,207,0.15);
-            font-size: 13px; color: #2a6d96; margin-bottom: 16px; line-height: 1.4;
+            font-size: 15px; color: #2a6d96; margin-bottom: 16px; line-height: 1.4;
         }
 
         .coords-display {
-            font-family: monospace; font-size: 13px; padding: 8px 12px;
+            font-family: monospace; font-size: 14px; padding: 8px 12px;
             background: rgba(27,47,37,0.04); border-radius: var(--radius-xs);
             color: #6b7c72; text-align: center;
         }
@@ -398,13 +419,13 @@
             display: flex; align-items: center; justify-content: space-between;
             background: var(--glass); backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border); border-radius: 14px;
-            padding: 9px 14px; font-size: 11px; color: var(--text-secondary);
+            padding: 10px 16px; font-size: 13px; color: var(--text-secondary);
             box-shadow: 0 4px 18px rgba(0,0,0,0.25);
         }
-        .status-count { font-weight: 700; color: var(--accent-primary); font-size: 13px; }
+        .status-count { font-weight: 700; color: var(--accent-primary); font-size: 15px; }
         .status-legend { display: flex; gap: 10px; }
         .legend-item { display: flex; align-items: center; gap: 4px; }
-        .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+        .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
 
         /* Report mode banner */
         .report-banner {
@@ -417,7 +438,7 @@
             transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
         }
         .report-banner.visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
-        .report-banner-text { flex: 1; font-size: 13px; color: white; font-weight: 500; line-height: 1.3; }
+        .report-banner-text { flex: 1; font-size: 15px; color: white; font-weight: 500; line-height: 1.3; }
         .report-banner-cancel {
             padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3);
             background: transparent; color: white; font-family: var(--font-body);
@@ -449,7 +470,7 @@
             opacity: 0.5;
         }
         .loading-title { font-family: var(--font-display); font-size: 28px; color: var(--accent-primary); font-weight: 700; margin-bottom: 4px; }
-        .loading-sub { font-size: 14px; font-weight: 300; color: var(--text-secondary); margin-bottom: 28px; }
+        .loading-sub { font-size: 16px; font-weight: 300; color: var(--text-secondary); margin-bottom: 28px; }
         .loading-bar { width: 140px; height: 3px; background: rgba(140,198,63,0.15); border-radius: 2px; overflow: hidden; }
         .loading-bar-fill { width: 40%; height: 100%; background: var(--accent-primary); border-radius: 2px; animation: loading-slide 1.2s ease infinite; }
         @keyframes loading-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
@@ -458,15 +479,14 @@
         /* ── CUSTOM MARKERS ──────────────── */
         .custom-marker {
             display: flex; align-items: center; justify-content: center;
-            width: 34px; height: 34px;
+            width: 44px; height: 44px;
             border-radius: 50% 50% 50% 4px;
             transform: rotate(-45deg);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
             transition: transform 0.15s;
         }
-        .custom-marker .marker-icon { transform: rotate(45deg); font-size: 15px; line-height: 1; }
+        .custom-marker .marker-icon { transform: rotate(45deg); font-size: 20px; line-height: 1; }
         .marker-alpeggio { background: var(--accent-primary); border: 2px solid #6ba02e; }
-        .marker-fattoria { background: var(--bark); border: 2px solid #5a3f28; }
         .marker-rifugio { background: var(--accent-sky); border: 2px solid #3a7ca5; }
         .marker-cani { background: var(--accent-danger); border: 2px solid #993530; }
         .marker-cani-unconfirmed { background: #bbb; border: 2px solid #888; opacity: 0.75; }
@@ -474,14 +494,14 @@
         .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background: rgba(27,47,37,0.65) !important; backdrop-filter: blur(4px); }
         .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div { background: var(--accent-primary) !important; color: var(--bg-deep) !important; font-family: var(--font-body) !important; font-weight: 700 !important; }
 
-        .user-marker { width: 16px; height: 16px; background: var(--accent-sky); border: 3px solid white; border-radius: 50%; box-shadow: 0 0 0 4px rgba(91,164,207,0.25), 0 2px 8px rgba(0,0,0,0.3); }
+        .user-marker { width: 20px; height: 20px; background: var(--accent-sky); border: 3px solid white; border-radius: 50%; box-shadow: 0 0 0 5px rgba(91,164,207,0.3), 0 2px 8px rgba(0,0,0,0.3); }
         .user-accuracy { border: 2px solid rgba(91,164,207,0.2); background: rgba(91,164,207,0.06); }
 
         /* ── TOAST ────────────────────────── */
         .toast {
             position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(20px);
             z-index: 3000; background: var(--bg-deep); color: var(--text-primary);
-            padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 500;
+            padding: 14px 22px; border-radius: 12px; font-size: 15px; font-weight: 500;
             box-shadow: 0 6px 24px rgba(0,0,0,0.35);
             opacity: 0; pointer-events: none;
             transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
@@ -508,7 +528,7 @@
 <div class="loading-overlay" id="loadingOverlay">
     <div class="loading-mountain"></div>
     <div class="loading-title">AlpeggiMap</div>
-    <div class="loading-sub">Malghe e Alpeggi del Piemonte</div>
+    <div class="loading-sub">Cani da guardiania, malghe e rifugi del Piemonte</div>
     <div class="loading-bar"><div class="loading-bar-fill"></div></div>
     <div class="loading-status" id="loadingStatus">Caricamento mappa...</div>
 </div>
@@ -548,20 +568,13 @@
     <div class="filter-title">Filtra mappa</div>
     <div class="filter-group">
         <div class="filter-group-label">Strutture</div>
-        <button class="filter-chip selected" data-filter="alpeggio"><span class="chip-icon">🏔️</span> Alpeggi</button>
-        <button class="filter-chip selected" data-filter="fattoria"><span class="chip-icon">🐄</span> Fattorie</button>
+        <button class="filter-chip selected" data-filter="alpeggio"><span class="chip-icon">🐑</span> Malghe / Alpeggi</button>
         <button class="filter-chip selected" data-filter="rifugio"><span class="chip-icon">🏠</span> Rifugi</button>
     </div>
     <div class="filter-group">
-        <div class="filter-group-label">Segnalazioni</div>
-        <button class="filter-chip selected" data-filter="cani"><span class="chip-icon">🐕</span> Cani da guardiania</button>
-        <button class="filter-chip" data-filter="cani_unconfirmed"><span class="chip-icon">❓</span> Non confermati</button>
-    </div>
-    <div class="filter-group">
-        <div class="filter-group-label">Prodotti</div>
-        <button class="filter-chip" data-filter="formaggio"><span class="chip-icon">🧀</span> Formaggi</button>
-        <button class="filter-chip" data-filter="latte"><span class="chip-icon">🥛</span> Latte</button>
-        <button class="filter-chip" data-filter="miele"><span class="chip-icon">🍯</span> Miele</button>
+        <div class="filter-group-label">Segnalazioni cani</div>
+        <button class="filter-chip selected" data-filter="cani"><span class="chip-icon">🐕</span> Confermate</button>
+        <button class="filter-chip" data-filter="cani_unconfirmed"><span class="chip-icon">❓</span> Non confermate</button>
     </div>
 </div>
 
@@ -650,11 +663,11 @@
 <!-- STATUS BAR -->
 <div class="status-bar" id="statusBar">
     <div class="status-content">
-        <div><span class="status-count" id="statusCount">0</span> strutture</div>
+        <div><span class="status-count" id="statusCount">0</span> punti</div>
         <div class="status-legend">
-            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-primary)"></div> Alpeggi</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-primary)"></div> Malghe</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-sky)"></div> Rifugi</div>
             <div class="legend-item"><div class="legend-dot" style="background:var(--accent-danger)"></div> Cani</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#bbb"></div> Non conf.</div>
         </div>
     </div>
 </div>
@@ -675,9 +688,8 @@ const APP = {
     userMarker: null, userAccuracy: null, watchId: null, isTracking: false,
     reportMode: false, reportLatLng: null, reportTempMarker: null,
     activeFilters: {
-        alpeggio: true, fattoria: true, rifugio: true,
-        cani: true, cani_unconfirmed: false,
-        formaggio: false, latte: false, miele: false
+        alpeggio: true, rifugio: true,
+        cani: true, cani_unconfirmed: false
     },
     allData: [],
     reports: [] // Local report cache
@@ -779,7 +791,7 @@ function initMap() {
                 const { latitude: lat, longitude: lon, accuracy } = pos.coords;
                 APP.map.setView([lat, lon], 13, { animate: true });
                 APP.userMarker = L.marker([lat, lon], {
-                    icon: L.divIcon({ className: '', html: '<div class="user-marker"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }),
+                    icon: L.divIcon({ className: '', html: '<div class="user-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }),
                     zIndexOffset: 1000
                 }).addTo(APP.map);
                 APP.userAccuracy = L.circle([lat, lon], { radius: accuracy, className: 'user-accuracy', interactive: false }).addTo(APP.map);
@@ -817,7 +829,6 @@ async function loadOverpassData() {
         nwr["building"="farm"]["name"](${bbox});
         nwr["landuse"="farmyard"]["name"](${bbox});
         nwr["animal_keeping"](${bbox});
-        nwr["shop"="farm"](${bbox});
     );out center tags;`;
 
     try {
@@ -843,25 +854,15 @@ function processElements(elements) {
         const name = t.name || t['name:it'] || t.description;
         if (!name && t.tourism !== 'alpine_hut') return;
 
-        let type = 'fattoria', icon = '🐄';
+        let type = 'alpeggio', icon = '🐑';
         if (t.tourism === 'alpine_hut') { type = 'rifugio'; icon = '🏠'; }
-        else if (t.landuse === 'farmyard' || t.animal_keeping) { type = 'alpeggio'; icon = '🏔️'; }
-
-        const products = [];
-        if (t.produce) {
-            const p = t.produce.toLowerCase();
-            if (p.includes('cheese') || p.includes('formag')) products.push('formaggio');
-            if (p.includes('milk') || p.includes('latte')) products.push('latte');
-            if (p.includes('honey') || p.includes('miele')) products.push('miele');
-        }
-        if (t.shop === 'farm' && !products.length) products.push('formaggio');
 
         const animals = t.animal_keeping ? t.animal_keeping.split(';').map(a => a.trim()) : [];
 
         APP.allData.push({
-            id: el.id, lat, lon, name: name || 'Rifugio alpino', type, icon,
+            id: el.id, lat, lon, name: name || (type === 'rifugio' ? 'Rifugio alpino' : 'Malga'), type, icon,
             ele: t.ele ? Math.round(t.ele) + ' m' : null,
-            products, animals,
+            products: [], animals,
             hasGuardDogs: !!(t.guard_dog || t.hazard === 'guard_dogs'),
             tags: t,
             website: t.website || t['contact:website'],
@@ -936,10 +937,9 @@ function addReportToData(id, r) {
 
 function loadDemo() {
     APP.allData = [
-        { id:'d1', lat:45.05, lon:7.32, name:"Malga Prà Catinat", type:'alpeggio', icon:'🏔️', ele:'1850 m', products:['formaggio','latte'], animals:['bovini','caprini'], hasGuardDogs:false, tags:{} },
-        { id:'d2', lat:44.98, lon:7.15, name:"Alpe Selleries", type:'alpeggio', icon:'🏔️', ele:'2023 m', products:['formaggio'], animals:['bovini'], hasGuardDogs:false, tags:{} },
-        { id:'d3', lat:45.97, lon:8.10, name:"Alpe Devero", type:'rifugio', icon:'🏠', ele:'1640 m', products:['formaggio','miele'], animals:['bovini'], hasGuardDogs:false, tags:{} },
-        { id:'d4', lat:44.67, lon:7.00, name:"Agriturismo La Meiro", type:'fattoria', icon:'🐄', ele:'1100 m', products:['formaggio','latte','miele'], animals:['bovini','caprini'], hasGuardDogs:false, tags:{} },
+        { id:'d1', lat:45.05, lon:7.32, name:"Malga Prà Catinat", type:'alpeggio', icon:'🐑', ele:'1850 m', products:[], animals:['bovini','caprini'], hasGuardDogs:false, tags:{} },
+        { id:'d2', lat:44.98, lon:7.15, name:"Alpe Selleries", type:'alpeggio', icon:'🐑', ele:'2023 m', products:[], animals:['bovini'], hasGuardDogs:false, tags:{} },
+        { id:'d3', lat:45.97, lon:8.10, name:"Rifugio Alpe Devero", type:'rifugio', icon:'🏠', ele:'1640 m', products:[], animals:['bovini'], hasGuardDogs:false, tags:{} },
     ];
     addDemoReports();
     renderMarkers();
@@ -960,16 +960,7 @@ function renderMarkers() {
         if (item.type === 'cani' && !APP.activeFilters.cani) return;
         if (item.type === 'cani_unconfirmed' && !APP.activeFilters.cani_unconfirmed) return;
         if (item.type === 'alpeggio' && !APP.activeFilters.alpeggio) return;
-        if (item.type === 'fattoria' && !APP.activeFilters.fattoria) return;
         if (item.type === 'rifugio' && !APP.activeFilters.rifugio) return;
-
-        const prodActive = APP.activeFilters.formaggio || APP.activeFilters.latte || APP.activeFilters.miele;
-        if (prodActive && !item.type.startsWith('cani')) {
-            const match = (APP.activeFilters.formaggio && item.products.includes('formaggio')) ||
-                          (APP.activeFilters.latte && item.products.includes('latte')) ||
-                          (APP.activeFilters.miele && item.products.includes('miele'));
-            if (!match) return;
-        }
 
         if (search) {
             const s = (item.name || '').toLowerCase() + ' ' + (item.operator || '').toLowerCase() + ' ' + (item.guardDogNote || '').toLowerCase();
@@ -981,7 +972,7 @@ function renderMarkers() {
             icon: L.divIcon({
                 className: '',
                 html: `<div class="custom-marker ${mClass}"><span class="marker-icon">${item.icon}</span></div>`,
-                iconSize: [34, 34], iconAnchor: [17, 34]
+                iconSize: [44, 44], iconAnchor: [22, 44]
             })
         });
         marker.on('click', () => openBottomSheet(item));
@@ -1000,15 +991,108 @@ function openBottomSheet(item) {
     const content = document.getElementById('sheetContent');
 
     const typeMap = {
-        alpeggio: ['Alpeggio', 'badge-alpeggio'],
-        fattoria: ['Fattoria', 'badge-fattoria'],
+        alpeggio: ['Malga / Alpeggio', 'badge-alpeggio'],
         rifugio: ['Rifugio', 'badge-rifugio'],
-        cani: ['Segnalazione', 'badge-alpeggio'],
-        cani_unconfirmed: ['Non confermata', 'badge-fattoria']
+        cani: ['⚠️ Cani segnalati', 'badge-cani'],
+        cani_unconfirmed: ['Segnalazione non confermata', 'badge-unconfirmed']
     };
     const [typeLabel, badge] = typeMap[item.type] || ['Luogo', 'badge-alpeggio'];
 
-    let html = `
+    let html = '';
+
+    // ── DOG REPORT CARD ──
+    if (item.type.startsWith('cani')) {
+        const breedMap = { maremmano: 'Maremmano Abruzzese', pastore_abruzzese: 'Pastore Abruzzese', altro: 'Razza non specificata' };
+        const behaviorMap = { calm: '😌 Calmi', alert: '⚡ Vigili / Abbaiavano', aggressive: '🔴 Aggressivi' };
+        const countMap = { '1': '1 cane', '2-3': '2-3 cani', '4+': '4 o più cani', unknown: 'Numero sconosciuto' };
+
+        // Timestamp formatting
+        let timeStr = '';
+        if (item.timestamp) {
+            const d = new Date(item.timestamp);
+            const age = Math.floor((Date.now() - item.timestamp) / (24*60*60*1000));
+            const hh = d.getHours().toString().padStart(2,'0');
+            const mm = d.getMinutes().toString().padStart(2,'0');
+            const dd = d.getDate().toString().padStart(2,'0');
+            const mo = (d.getMonth()+1).toString().padStart(2,'0');
+            const yr = d.getFullYear();
+            if (age === 0) timeStr = `Oggi alle ${hh}:${mm}`;
+            else if (age === 1) timeStr = `Ieri alle ${hh}:${mm}`;
+            else timeStr = `${dd}/${mo}/${yr} alle ${hh}:${mm} (${age} giorni fa)`;
+        }
+
+        const totalReports = (item.confirmations || 0) + (item.denials || 0) + 1;
+
+        html += `
+        <div class="sheet-header">
+            <div class="sheet-name">${item.name || 'Segnalazione cani da guardiania'}</div>
+        </div>
+
+        <div class="dog-report-card">
+            <div class="dog-report-row">
+                <span class="dog-report-label">📅 Ultimo avvistamento</span>
+                <span class="dog-report-value">${timeStr || 'Data sconosciuta'}</span>
+            </div>
+            <div class="dog-report-row">
+                <span class="dog-report-label">🐕 Numero cani</span>
+                <span class="dog-report-value">${countMap[item.dogCount] || 'Non specificato'}</span>
+            </div>
+            <div class="dog-report-row">
+                <span class="dog-report-label">🐾 Razza</span>
+                <span class="dog-report-value">${breedMap[item.breed] || 'Non specificata'}</span>
+            </div>
+            <div class="dog-report-row">
+                <span class="dog-report-label">🎭 Comportamento</span>
+                <span class="dog-report-value dog-behavior-${item.behavior || 'unknown'}">${behaviorMap[item.behavior] || 'Non specificato'}</span>
+            </div>
+            ${item.trailCrossing ? '<div class="dog-report-row trail-warning"><span class="dog-report-label">🚶 Sentiero</span><span class="dog-report-value">⚠️ Il sentiero passa attraverso il gregge</span></div>' : ''}
+            <div class="dog-report-row">
+                <span class="dog-report-label">📊 Segnalazioni totali</span>
+                <span class="dog-report-value">${totalReports} (${item.confirmations} conferme, ${item.denials} smentite)</span>
+            </div>
+            ${item.nearFarm ? '<div class="dog-report-row"><span class="dog-report-label">📍 Posizione</span><span class="dog-report-value">✅ Vicino ad alpeggio registrato</span></div>' : ''}
+        </div>`;
+
+        // Credibility bar
+        if (item.credScore !== undefined) {
+            const cl = item.credLevel;
+            html += `
+            <div class="credibility-bar">
+                <div class="credibility-header">
+                    <span class="credibility-label">Affidabilità</span>
+                    <span class="credibility-value" style="color:${cl.textColor}">${cl.label} — ${item.credScore}/100</span>
+                </div>
+                <div class="credibility-track">
+                    <div class="credibility-fill ${cl.color}" style="width:${item.credScore}%"></div>
+                </div>
+            </div>`;
+        }
+
+        // Confirm / Deny
+        html += `
+        <div class="confirm-buttons">
+            <button class="btn-confirm" onclick="confirmReport('${item.reportId}', true)">
+                ✓ Confermo (${item.confirmations})
+            </button>
+            <button class="btn-deny" onclick="confirmReport('${item.reportId}', false)">
+                ✗ Non presente (${item.denials})
+            </button>
+        </div>`;
+
+        // Notes
+        if (item.guardDogNote) {
+            html += `<div class="dog-notes">
+                <div class="dog-notes-label">📝 Note dell'escursionista</div>
+                <div class="dog-notes-text">${item.guardDogNote}</div>
+            </div>`;
+        }
+
+        // Coordinates
+        html += `<div style="font-size:13px;color:#8a9a8f;margin-bottom:12px;text-align:center">📍 ${item.lat.toFixed(5)}, ${item.lon.toFixed(5)}</div>`;
+
+    } else {
+        // ── ALPEGGIO / RIFUGIO CARD ──
+        html += `
         <div class="sheet-header">
             <div class="sheet-name">${item.name || 'Senza nome'}</div>
             <div class="sheet-type-badge ${badge}">${item.icon} ${typeLabel}</div>
@@ -1019,67 +1103,22 @@ function openBottomSheet(item) {
             <div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${item.lat.toFixed(4)}, ${item.lon.toFixed(4)}</div>
         </div>`;
 
-    // Credibility bar for reports
-    if (item.type.startsWith('cani') && item.credScore !== undefined) {
-        const cl = item.credLevel;
-        html += `
-        <div class="credibility-bar">
-            <div class="credibility-header">
-                <span class="credibility-label">Affidabilità segnalazione</span>
-                <span class="credibility-value" style="color:${cl.textColor}">${cl.label} (${item.credScore}/100)</span>
-            </div>
-            <div class="credibility-track">
-                <div class="credibility-fill ${cl.color}" style="width:${item.credScore}%"></div>
-            </div>
-        </div>`;
-
-        // Confirm / Deny buttons
-        html += `
-        <div class="confirm-buttons">
-            <button class="btn-confirm" onclick="confirmReport('${item.reportId}', true)">
-                ✓ Confermo (${item.confirmations})
-            </button>
-            <button class="btn-deny" onclick="confirmReport('${item.reportId}', false)">
-                ✗ Non presente (${item.denials})
-            </button>
-        </div>`;
-    }
-
-    // Dog warning
-    if (item.hasGuardDogs || item.type.startsWith('cani')) {
-        const breedMap = { maremmano: 'Maremmano Abruzzese', pastore_abruzzese: 'Pastore Abruzzese', altro: 'Razza non specificata' };
-        const behaviorMap = { calm: '😌 Calmi', alert: '👀 Vigili/abbaiavano', aggressive: '⚠️ Aggressivi' };
-        const countMap = { '1': '1 cane', '2-3': '2-3 cani', '4+': '4+ cani', unknown: 'N. sconosciuto' };
-
-        let details = '';
-        if (item.breed) details += `<strong>Razza:</strong> ${breedMap[item.breed] || item.breed}<br>`;
-        if (item.dogCount) details += `<strong>Numero:</strong> ${countMap[item.dogCount] || item.dogCount}<br>`;
-        if (item.behavior) details += `<strong>Comportamento:</strong> ${behaviorMap[item.behavior] || item.behavior}<br>`;
-        if (item.trailCrossing) details += `<strong>⚠️ Il sentiero passa attraverso il gregge</strong><br>`;
-
-        html += `<div class="dog-warning">
-            <div class="dog-warning-icon">🐕‍🦺</div>
-            <div class="dog-warning-text">
-                <strong>Attenzione: cani da guardiania</strong>
-                ${details}
-                ${item.guardDogNote || 'Mantenere distanza, non correre, tenere il cane al guinzaglio.'}
-            </div>
-        </div>`;
-
-        if (item.timestamp) {
-            const age = Math.floor((Date.now() - item.timestamp) / (24*60*60*1000));
-            html += `<div style="font-size:12px;color:#8a9a8f;margin-bottom:12px">Segnalato ${age === 0 ? 'oggi' : age + ' giorni fa'}${item.nearFarm ? ' · Vicino ad alpeggio registrato ✓' : ''}</div>`;
+        // Animals only (no products)
+        if (item.animals.length) {
+            const ai = { bovini:'🐄', ovini:'🐑', caprini:'🐐', equini:'🐴', suini:'🐷' };
+            html += `<div class="sheet-section"><div class="sheet-section-title">Animali presenti</div><div class="sheet-tags">${item.animals.map(a => `<span class="sheet-tag tag-animal">${ai[a]||'🐾'} ${a[0].toUpperCase()+a.slice(1)}</span>`).join('')}</div></div>`;
         }
-    }
 
-    // Products / Animals
-    if (item.products.length) {
-        const pi = { formaggio:'🧀', latte:'🥛', miele:'🍯' };
-        html += `<div class="sheet-section"><div class="sheet-section-title">Prodotti</div><div class="sheet-tags">${item.products.map(p => `<span class="sheet-tag tag-product">${pi[p]||''} ${p[0].toUpperCase()+p.slice(1)}</span>`).join('')}</div></div>`;
-    }
-    if (item.animals.length) {
-        const ai = { bovini:'🐄', ovini:'🐑', caprini:'🐐', equini:'🐴', suini:'🐷' };
-        html += `<div class="sheet-section"><div class="sheet-section-title">Animali</div><div class="sheet-tags">${item.animals.map(a => `<span class="sheet-tag tag-animal">${ai[a]||'🐾'} ${a[0].toUpperCase()+a.slice(1)}</span>`).join('')}</div></div>`;
+        // Dog warning for alpeggi that have guard dogs tagged in OSM
+        if (item.hasGuardDogs) {
+            html += `<div class="dog-warning">
+                <div class="dog-warning-icon">🐕‍🦺</div>
+                <div class="dog-warning-text">
+                    <strong>Attenzione: possibile presenza cani da guardiania</strong>
+                    Mantenere distanza, non correre, tenere il cane al guinzaglio.
+                </div>
+            </div>`;
+        }
     }
 
     html += `<button class="sheet-nav-btn" onclick="navigateTo(${item.lat},${item.lon})">
@@ -1155,7 +1194,7 @@ function placeReportMarker(latlng) {
         icon: L.divIcon({
             className: '',
             html: '<div class="custom-marker marker-cani" style="animation: pulse-report 1s infinite"><span class="marker-icon">📍</span></div>',
-            iconSize: [34, 34], iconAnchor: [17, 34]
+            iconSize: [44, 44], iconAnchor: [22, 44]
         })
     }).addTo(APP.map);
 
@@ -1301,7 +1340,7 @@ function startGPS() {
             APP.userAccuracy.setLatLng([lat, lon]).setRadius(accuracy);
         } else {
             APP.userMarker = L.marker([lat, lon], {
-                icon: L.divIcon({ className: '', html: '<div class="user-marker"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }),
+                icon: L.divIcon({ className: '', html: '<div class="user-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }),
                 zIndexOffset: 1000
             }).addTo(APP.map);
             APP.userAccuracy = L.circle([lat, lon], { radius: accuracy, className: 'user-accuracy', interactive: false }).addTo(APP.map);
