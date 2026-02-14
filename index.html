@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1b2f25">
+    <title>AlpeggiMap — Malghe e Alpeggi del Piemonte</title>
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDK (modular) -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, limit, doc, updateDoc, increment, Timestamp, GeoPoint } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+        // ═══════════════════════════════════════════════════
+        // 🔧 CONFIGURAZIONE FIREBASE
+        // Crea un progetto su https://console.firebase.google.com
+        // Abilita Firestore e Authentication (Anonymous)
+        // Incolla qui sotto la tua config
+        // ═══════════════════════════════════════════════════
+        const firebaseConfig = {
+            apiKey: "AIzaSyCMypEujmYfz9fT1HPeCog8nlFMiuSsuTc",
+            authDomain: "alpeggimap.firebaseapp.com",
+            projectId: "alpeggimap",
+            storageBucket: "alpeggimap.firebasestorage.app",
+            messagingSenderId: "41660025570",
+            appId: "1:41660025570:web:2ef2c46a53cc5700fe6cbb"
+        };
+
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let firebaseReady = false;
+
+        // Try to initialize Firebase (graceful fallback if config not set)
+        try {
+            if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        firebaseReady = true;
+                        window.FIREBASE = { db, auth, currentUser, firebaseReady, collection, addDoc, getDocs, query, where, orderBy, limit, doc, updateDoc, increment, Timestamp, GeoPoint };
+                        console.log('Firebase ready, user:', user.uid);
+                        if (typeof window.onFirebaseReady === 'function') window.onFirebaseReady();
+                    }
+                });
+
+                signInAnonymously(auth).catch(console.error);
+            } else {
+                console.log('Firebase non configurato — modalità demo attiva');
+                window.FIREBASE = null;
+            }
+        } catch (e) {
+            console.warn('Firebase init failed:', e);
+            window.FIREBASE = null;
+        }
+    </script>
+
+    <style>
+        :root {
+            --bg-deep: #1b2f25;
+            --bg-mid: #243d30;
+            --bg-surface: #2c4a3a;
+            --accent-primary: #8cc63f;
+            --accent-warm: #e8914f;
+            --accent-sky: #5ba4cf;
+            --accent-danger: #d45b4f;
+            --accent-gold: #d4a84b;
+            --text-primary: #eae6de;
+            --text-secondary: rgba(234,230,222,0.55);
+            --text-muted: rgba(234,230,222,0.3);
+            --text-dark: #1b2f25;
+            --surface-light: #f7f4ee;
+            --surface-warm: #faf7f1;
+            --bark: #7a5c3e;
+            --glass: rgba(27, 47, 37, 0.88);
+            --glass-border: rgba(140, 198, 63, 0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --radius-xs: 6px;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-body: 'Source Sans 3', system-ui, sans-serif;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100dvh;
+            position: relative;
+        }
+
+        /* ── MAP ─────────────────────────── */
+        #map { width: 100%; height: 100%; z-index: 1; }
+        .leaflet-tile-pane { filter: saturate(0.8) brightness(1.02); }
+        .leaflet-control-zoom { border: none !important; box-shadow: 0 2px 12px rgba(0,0,0,0.25) !important; border-radius: 12px !important; overflow: hidden; }
+        .leaflet-control-zoom a { background: var(--glass) !important; color: var(--text-primary) !important; backdrop-filter: blur(12px); border: none !important; width: 38px !important; height: 38px !important; line-height: 38px !important; font-size: 18px !important; }
+        .leaflet-control-zoom a:hover { background: var(--bg-surface) !important; }
+
+        /* ── TOP BAR ─────────────────────── */
+        .top-bar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            padding: calc(var(--safe-top) + 8px) 14px 0;
+            pointer-events: none;
+        }
+        .search-row {
+            pointer-events: auto;
+            display: flex; align-items: center; gap: 8px;
+            background: var(--glass);
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: 18px;
+            padding: 5px 5px 5px 14px;
+            box-shadow: 0 6px 28px rgba(0,0,0,0.35);
+        }
+        .app-brand {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: 17px; color: var(--accent-primary);
+            white-space: nowrap; letter-spacing: -0.5px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .app-brand .brand-badge {
+            font-family: var(--font-body); font-weight: 600; font-size: 9px;
+            background: rgba(140,198,63,0.15); color: var(--accent-primary);
+            padding: 2px 6px; border-radius: 4px; text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .search-input {
+            flex: 1; min-width: 0; background: none; border: none;
+            color: var(--text-primary); font-family: var(--font-body);
+            font-size: 14px; font-weight: 400; outline: none;
+        }
+        .search-input::placeholder { color: var(--text-muted); }
+
+        .btn-icon {
+            width: 40px; height: 40px; border-radius: 12px; border: none;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.15s ease; flex-shrink: 0;
+        }
+        .btn-icon:active { transform: scale(0.9); }
+        .btn-icon svg { width: 19px; height: 19px; }
+
+        .btn-gps { background: var(--accent-primary); color: var(--bg-deep); }
+        .btn-gps.tracking { background: var(--accent-sky); animation: pulse-gps 2s infinite; }
+        @keyframes pulse-gps {
+            0%,100% { box-shadow: 0 0 0 0 rgba(91,164,207,0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(91,164,207,0); }
+        }
+        .btn-filter { background: rgba(234,230,222,0.08); color: var(--text-primary); }
+        .btn-filter.active { background: var(--accent-warm); color: white; }
+        .btn-report {
+            background: rgba(212,75,79,0.15); color: var(--accent-danger);
+            border: 1px solid rgba(212,75,79,0.25);
+        }
+        .btn-report.active-mode {
+            background: var(--accent-danger); color: white;
+            animation: pulse-report 1.5s infinite;
+        }
+        @keyframes pulse-report {
+            0%,100% { box-shadow: 0 0 0 0 rgba(212,75,79,0.3); }
+            50% { box-shadow: 0 0 0 6px rgba(212,75,79,0); }
+        }
+
+        /* ── FILTER PANEL ────────────────── */
+        .filter-panel {
+            position: fixed; top: 80px; left: 14px; right: 14px; z-index: 999;
+            background: var(--glass); backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border); border-radius: var(--radius);
+            padding: 18px; box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+            transform: translateY(-16px); opacity: 0; pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+        }
+        .filter-panel.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .filter-title { font-family: var(--font-display); font-size: 17px; color: var(--accent-primary); margin-bottom: 14px; }
+        .filter-group { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+        .filter-group-label {
+            width: 100%; font-size: 10px; text-transform: uppercase;
+            letter-spacing: 1.6px; color: var(--text-secondary); font-weight: 600; margin-bottom: 2px;
+        }
+        .filter-chip {
+            padding: 7px 13px; border-radius: 20px;
+            border: 1px solid rgba(234,230,222,0.1);
+            background: rgba(234,230,222,0.04); color: var(--text-primary);
+            font-family: var(--font-body); font-size: 13px; font-weight: 400;
+            cursor: pointer; transition: all 0.15s;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .filter-chip:active { transform: scale(0.95); }
+        .filter-chip.selected { background: var(--accent-primary); border-color: var(--accent-primary); color: var(--bg-deep); font-weight: 600; }
+        .filter-chip .chip-icon { font-size: 15px; }
+
+        /* ── BOTTOM SHEET ────────────────── */
+        .bottom-sheet {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 1001;
+            background: var(--surface-light); color: var(--text-dark);
+            border-radius: 22px 22px 0 0;
+            padding: 0 18px calc(18px + var(--safe-bottom));
+            max-height: 60vh; overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.16,1,0.3,1);
+            box-shadow: 0 -6px 36px rgba(0,0,0,0.3);
+        }
+        .bottom-sheet.open { transform: translateY(0); }
+
+        .sheet-handle { width: 32px; height: 4px; background: rgba(27,47,37,0.15); border-radius: 2px; margin: 10px auto 14px; }
+        .sheet-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
+        .sheet-name { font-family: var(--font-display); font-size: 21px; color: var(--bg-deep); line-height: 1.2; flex: 1; font-weight: 700; }
+        .sheet-type-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 10px; border-radius: 16px;
+            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+            flex-shrink: 0;
+        }
+        .badge-alpeggio { background: rgba(140,198,63,0.12); color: #3d7a1a; }
+        .badge-fattoria { background: rgba(122,92,62,0.1); color: var(--bark); }
+        .badge-rifugio { background: rgba(91,164,207,0.12); color: #2a6d96; }
+
+        .sheet-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+        .meta-item { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #6b7c72; }
+        .meta-item svg { width: 15px; height: 15px; stroke: #8cc63f; }
+
+        .sheet-section { margin-bottom: 12px; }
+        .sheet-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.4px; color: #8a9a8f; font-weight: 700; margin-bottom: 5px; }
+        .sheet-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+        .sheet-tag { padding: 3px 9px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+        .tag-product { background: rgba(232,145,79,0.1); color: #b5692a; }
+        .tag-animal { background: rgba(140,198,63,0.1); color: #3d7a1a; }
+
+        /* Dog warning */
+        .dog-warning {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 12px; background: rgba(212,75,79,0.06);
+            border: 1px solid rgba(212,75,79,0.18); border-radius: var(--radius-sm);
+            margin-bottom: 12px;
+        }
+        .dog-warning-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+        .dog-warning-text { font-size: 13px; color: #a03a30; line-height: 1.45; }
+        .dog-warning-text strong { display: block; margin-bottom: 2px; }
+
+        /* Credibility bar */
+        .credibility-bar { margin-bottom: 12px; }
+        .credibility-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .credibility-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: #8a9a8f; font-weight: 700; }
+        .credibility-value { font-size: 12px; font-weight: 700; }
+        .credibility-track { width: 100%; height: 6px; background: rgba(27,47,37,0.08); border-radius: 3px; overflow: hidden; }
+        .credibility-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+        .cred-low { background: var(--accent-danger); }
+        .cred-mid { background: var(--accent-gold); }
+        .cred-high { background: var(--accent-primary); }
+
+        .confirm-buttons { display: flex; gap: 8px; margin-bottom: 12px; }
+        .btn-confirm, .btn-deny {
+            flex: 1; padding: 10px; border-radius: var(--radius-sm); border: none;
+            font-family: var(--font-body); font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-confirm:active, .btn-deny:active { transform: scale(0.96); }
+        .btn-confirm { background: rgba(140,198,63,0.12); color: #3d7a1a; border: 1px solid rgba(140,198,63,0.25); }
+        .btn-deny { background: rgba(212,75,79,0.08); color: #a03a30; border: 1px solid rgba(212,75,79,0.2); }
+
+        .sheet-nav-btn {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; padding: 13px; border-radius: var(--radius-sm); border: none;
+            background: var(--bg-deep); color: var(--text-primary);
+            font-family: var(--font-body); font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .sheet-nav-btn:active { transform: scale(0.98); background: var(--bg-mid); }
+
+        /* ── REPORT MODAL ────────────────── */
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 2000;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+            display: flex; align-items: flex-end; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .modal-sheet {
+            width: 100%; max-width: 480px;
+            background: var(--surface-warm); color: var(--text-dark);
+            border-radius: 22px 22px 0 0;
+            padding: 0 20px calc(20px + var(--safe-bottom));
+            max-height: 85vh; overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.16,1,0.3,1);
+        }
+        .modal-overlay.open .modal-sheet { transform: translateY(0); }
+
+        .modal-handle { width: 32px; height: 4px; background: rgba(27,47,37,0.15); border-radius: 2px; margin: 10px auto 6px; }
+        .modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 0 14px; border-bottom: 1px solid rgba(27,47,37,0.08); margin-bottom: 16px;
+        }
+        .modal-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--bg-deep); }
+        .modal-close {
+            width: 32px; height: 32px; border-radius: 50%; border: none;
+            background: rgba(27,47,37,0.06); color: #6b7c72;
+            font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #6b7c72; font-weight: 700; margin-bottom: 6px; }
+        .form-hint { font-size: 12px; color: #8a9a8f; margin-top: 4px; line-height: 1.4; }
+
+        .form-input, .form-textarea, .form-select {
+            width: 100%; padding: 11px 14px;
+            border: 1.5px solid rgba(27,47,37,0.12); border-radius: var(--radius-sm);
+            background: white; color: var(--text-dark);
+            font-family: var(--font-body); font-size: 14px;
+            outline: none; transition: border-color 0.2s;
+        }
+        .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--accent-primary); }
+        .form-textarea { resize: vertical; min-height: 70px; }
+
+        .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .radio-option {
+            padding: 9px 14px; border-radius: 12px;
+            border: 1.5px solid rgba(27,47,37,0.1); background: white;
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+        }
+        .radio-option:active { transform: scale(0.96); }
+        .radio-option.selected { border-color: var(--accent-primary); background: rgba(140,198,63,0.08); color: #3d7a1a; font-weight: 600; }
+        .radio-option .opt-icon { font-size: 16px; }
+
+        .checkbox-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 0; cursor: pointer;
+        }
+        .checkbox-box {
+            width: 22px; height: 22px; border-radius: 6px;
+            border: 2px solid rgba(27,47,37,0.18); background: white;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s; flex-shrink: 0;
+        }
+        .checkbox-row.checked .checkbox-box {
+            background: var(--accent-primary); border-color: var(--accent-primary);
+        }
+        .checkbox-box svg { width: 14px; height: 14px; stroke: white; stroke-width: 3; opacity: 0; transition: opacity 0.15s; }
+        .checkbox-row.checked .checkbox-box svg { opacity: 1; }
+        .checkbox-label { font-size: 14px; color: var(--text-dark); }
+
+        .submit-btn {
+            width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none;
+            background: var(--accent-danger); color: white;
+            font-family: var(--font-body); font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: all 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .submit-btn:active { transform: scale(0.98); }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .report-map-hint {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 14px; border-radius: var(--radius-sm);
+            background: rgba(91,164,207,0.08); border: 1px solid rgba(91,164,207,0.15);
+            font-size: 13px; color: #2a6d96; margin-bottom: 16px; line-height: 1.4;
+        }
+
+        .coords-display {
+            font-family: monospace; font-size: 13px; padding: 8px 12px;
+            background: rgba(27,47,37,0.04); border-radius: var(--radius-xs);
+            color: #6b7c72; text-align: center;
+        }
+
+        /* ── STATUS BAR ──────────────────── */
+        .status-bar {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 998;
+            padding: 0 14px calc(8px + var(--safe-bottom));
+            pointer-events: none;
+        }
+        .status-content {
+            pointer-events: auto;
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--glass); backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); border-radius: 14px;
+            padding: 9px 14px; font-size: 11px; color: var(--text-secondary);
+            box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+        }
+        .status-count { font-weight: 700; color: var(--accent-primary); font-size: 13px; }
+        .status-legend { display: flex; gap: 10px; }
+        .legend-item { display: flex; align-items: center; gap: 4px; }
+        .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+        /* Report mode banner */
+        .report-banner {
+            position: fixed; top: 75px; left: 14px; right: 14px; z-index: 1002;
+            background: rgba(212,75,79,0.95); backdrop-filter: blur(12px);
+            border-radius: 12px; padding: 12px 16px;
+            display: flex; align-items: center; gap: 10px;
+            box-shadow: 0 6px 24px rgba(212,75,79,0.3);
+            transform: translateY(-20px); opacity: 0; pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+        }
+        .report-banner.visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .report-banner-text { flex: 1; font-size: 13px; color: white; font-weight: 500; line-height: 1.3; }
+        .report-banner-cancel {
+            padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3);
+            background: transparent; color: white; font-family: var(--font-body);
+            font-size: 12px; font-weight: 600; cursor: pointer;
+        }
+
+        /* ── LOADING ─────────────────────── */
+        .loading-overlay {
+            position: fixed; inset: 0; z-index: 3000;
+            background: var(--bg-deep);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s, visibility 0.5s;
+        }
+        .loading-overlay.hidden { opacity: 0; visibility: hidden; }
+        .loading-mountain {
+            width: 80px; height: 60px; margin-bottom: 20px; position: relative;
+        }
+        .loading-mountain::before {
+            content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 40px solid transparent; border-right: 40px solid transparent;
+            border-bottom: 55px solid var(--bg-surface);
+        }
+        .loading-mountain::after {
+            content: ''; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 14px solid transparent; border-right: 14px solid transparent;
+            border-bottom: 18px solid var(--accent-primary);
+            opacity: 0.5;
+        }
+        .loading-title { font-family: var(--font-display); font-size: 28px; color: var(--accent-primary); font-weight: 700; margin-bottom: 4px; }
+        .loading-sub { font-size: 14px; font-weight: 300; color: var(--text-secondary); margin-bottom: 28px; }
+        .loading-bar { width: 140px; height: 3px; background: rgba(140,198,63,0.15); border-radius: 2px; overflow: hidden; }
+        .loading-bar-fill { width: 40%; height: 100%; background: var(--accent-primary); border-radius: 2px; animation: loading-slide 1.2s ease infinite; }
+        @keyframes loading-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+        .loading-status { margin-top: 16px; font-size: 12px; color: var(--text-muted); text-align: center; }
+
+        /* ── CUSTOM MARKERS ──────────────── */
+        .custom-marker {
+            display: flex; align-items: center; justify-content: center;
+            width: 34px; height: 34px;
+            border-radius: 50% 50% 50% 4px;
+            transform: rotate(-45deg);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: transform 0.15s;
+        }
+        .custom-marker .marker-icon { transform: rotate(45deg); font-size: 15px; line-height: 1; }
+        .marker-alpeggio { background: var(--accent-primary); border: 2px solid #6ba02e; }
+        .marker-fattoria { background: var(--bark); border: 2px solid #5a3f28; }
+        .marker-rifugio { background: var(--accent-sky); border: 2px solid #3a7ca5; }
+        .marker-cani { background: var(--accent-danger); border: 2px solid #993530; }
+        .marker-cani-unconfirmed { background: #bbb; border: 2px solid #888; opacity: 0.75; }
+
+        .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background: rgba(27,47,37,0.65) !important; backdrop-filter: blur(4px); }
+        .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div { background: var(--accent-primary) !important; color: var(--bg-deep) !important; font-family: var(--font-body) !important; font-weight: 700 !important; }
+
+        .user-marker { width: 16px; height: 16px; background: var(--accent-sky); border: 3px solid white; border-radius: 50%; box-shadow: 0 0 0 4px rgba(91,164,207,0.25), 0 2px 8px rgba(0,0,0,0.3); }
+        .user-accuracy { border: 2px solid rgba(91,164,207,0.2); background: rgba(91,164,207,0.06); }
+
+        /* ── TOAST ────────────────────────── */
+        .toast {
+            position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(20px);
+            z-index: 3000; background: var(--bg-deep); color: var(--text-primary);
+            padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 500;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+            opacity: 0; pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+            max-width: 320px; text-align: center;
+        }
+        .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* ── RESPONSIVE ──────────────────── */
+        @media (min-width: 768px) {
+            .search-row { max-width: 540px; margin: 0 auto; }
+            .filter-panel { max-width: 540px; left: 50%; transform: translateX(-50%) translateY(-16px); right: auto; }
+            .filter-panel.open { transform: translateX(-50%) translateY(0); }
+            .bottom-sheet { max-width: 420px; left: 50%; transform: translateX(-50%) translateY(100%); }
+            .bottom-sheet.open { transform: translateX(-50%) translateY(0); }
+            .status-bar { max-width: 540px; left: 50%; transform: translateX(-50%); }
+            .report-banner { max-width: 540px; left: 50%; transform: translateX(-50%) translateY(-20px); right: auto; }
+            .report-banner.visible { transform: translateX(-50%) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-mountain"></div>
+    <div class="loading-title">AlpeggiMap</div>
+    <div class="loading-sub">Malghe e Alpeggi del Piemonte</div>
+    <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+    <div class="loading-status" id="loadingStatus">Caricamento mappa...</div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+    <div class="search-row">
+        <div class="app-brand">AlpeggiMap <span class="brand-badge">Beta</span></div>
+        <input type="text" class="search-input" id="searchInput" placeholder="Cerca malga…">
+        <button class="btn-icon btn-report" id="btnReport" title="Segnala cani da guardiania">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </button>
+        <button class="btn-icon btn-filter" id="btnFilter" title="Filtri">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        </button>
+        <button class="btn-icon btn-gps" id="btnGps" title="La mia posizione">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+        </button>
+    </div>
+</div>
+
+<!-- REPORT MODE BANNER -->
+<div class="report-banner" id="reportBanner">
+    <span style="font-size:20px">🐕‍🦺</span>
+    <div class="report-banner-text">
+        <strong>Modalità segnalazione</strong><br>
+        Tocca sulla mappa dove hai visto i cani da guardiania
+    </div>
+    <button class="report-banner-cancel" onclick="exitReportMode()">Annulla</button>
+</div>
+
+<!-- FILTER PANEL -->
+<div class="filter-panel" id="filterPanel">
+    <div class="filter-title">Filtra mappa</div>
+    <div class="filter-group">
+        <div class="filter-group-label">Strutture</div>
+        <button class="filter-chip selected" data-filter="alpeggio"><span class="chip-icon">🏔️</span> Alpeggi</button>
+        <button class="filter-chip selected" data-filter="fattoria"><span class="chip-icon">🐄</span> Fattorie</button>
+        <button class="filter-chip selected" data-filter="rifugio"><span class="chip-icon">🏠</span> Rifugi</button>
+    </div>
+    <div class="filter-group">
+        <div class="filter-group-label">Segnalazioni</div>
+        <button class="filter-chip selected" data-filter="cani"><span class="chip-icon">🐕</span> Cani da guardiania</button>
+        <button class="filter-chip" data-filter="cani_unconfirmed"><span class="chip-icon">❓</span> Non confermati</button>
+    </div>
+    <div class="filter-group">
+        <div class="filter-group-label">Prodotti</div>
+        <button class="filter-chip" data-filter="formaggio"><span class="chip-icon">🧀</span> Formaggi</button>
+        <button class="filter-chip" data-filter="latte"><span class="chip-icon">🥛</span> Latte</button>
+        <button class="filter-chip" data-filter="miele"><span class="chip-icon">🍯</span> Miele</button>
+    </div>
+</div>
+
+<!-- BOTTOM SHEET -->
+<div class="bottom-sheet" id="bottomSheet">
+    <div class="sheet-handle"></div>
+    <div id="sheetContent"></div>
+</div>
+
+<!-- REPORT MODAL -->
+<div class="modal-overlay" id="reportModal">
+    <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <div class="modal-title">🐕‍🦺 Segnala cani</div>
+            <button class="modal-close" onclick="closeReportModal()">✕</button>
+        </div>
+
+        <div class="report-map-hint">
+            <span style="font-size:18px">📍</span>
+            <span>Posizione selezionata sulla mappa. Puoi modificarla chiudendo e toccando altrove.</span>
+        </div>
+        <div class="coords-display" id="reportCoords">—</div>
+
+        <form id="reportForm" onsubmit="return false" style="margin-top: 16px;">
+            <div class="form-group">
+                <label class="form-label">Quanti cani hai visto? *</label>
+                <div class="radio-group" id="dogCount">
+                    <div class="radio-option" data-value="1"><span class="opt-icon">1️⃣</span> Uno</div>
+                    <div class="radio-option" data-value="2-3"><span class="opt-icon">2️⃣</span> 2-3</div>
+                    <div class="radio-option" data-value="4+"><span class="opt-icon">🔢</span> 4 o più</div>
+                    <div class="radio-option" data-value="unknown"><span class="opt-icon">❓</span> Non so</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Razza (se riconoscibile)</label>
+                <div class="radio-group" id="dogBreed">
+                    <div class="radio-option" data-value="maremmano"><span class="opt-icon">🐕</span> Maremmano</div>
+                    <div class="radio-option" data-value="pastore_abruzzese"><span class="opt-icon">🐕</span> Pastore Abruzzese</div>
+                    <div class="radio-option" data-value="altro"><span class="opt-icon">🐾</span> Altro / Non so</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Tipo di bestiame protetto</label>
+                <div class="radio-group" id="livestock">
+                    <div class="radio-option" data-value="ovini"><span class="opt-icon">🐑</span> Pecore</div>
+                    <div class="radio-option" data-value="bovini"><span class="opt-icon">🐄</span> Bovini</div>
+                    <div class="radio-option" data-value="caprini"><span class="opt-icon">🐐</span> Capre</div>
+                    <div class="radio-option" data-value="misto"><span class="opt-icon">🐾</span> Misto / Non so</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Comportamento dei cani *</label>
+                <div class="radio-group" id="dogBehavior">
+                    <div class="radio-option" data-value="calm"><span class="opt-icon">😌</span> Calmi, a distanza</div>
+                    <div class="radio-option" data-value="alert"><span class="opt-icon">👀</span> Vigili, abbaiavano</div>
+                    <div class="radio-option" data-value="aggressive"><span class="opt-icon">⚠️</span> Aggressivi, si avvicinavano</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Il sentiero passa attraverso il gregge?</label>
+                <div class="checkbox-row" id="checkTrailCrossing" onclick="toggleCheck(this)">
+                    <div class="checkbox-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <span class="checkbox-label">Sì, il sentiero attraversa la zona del gregge</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Note aggiuntive</label>
+                <textarea class="form-textarea" id="reportNotes" placeholder="Es: I cani erano vicino alla malga sopra il bivio, sentiero CAI n.312. Passaggio possibile tenendosi sul lato sinistro..."></textarea>
+                <div class="form-hint">Più dettagli fornisci, più credibile sarà la segnalazione. Indica riferimenti al sentiero CAI se possibile.</div>
+            </div>
+
+            <button class="submit-btn" id="submitReport" onclick="submitReport()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Invia segnalazione
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar" id="statusBar">
+    <div class="status-content">
+        <div><span class="status-count" id="statusCount">0</span> strutture</div>
+        <div class="status-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-primary)"></div> Alpeggi</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-danger)"></div> Cani</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#bbb"></div> Non conf.</div>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- SCRIPTS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════
+const APP = {
+    map: null, markers: [], clusterGroup: null,
+    userMarker: null, userAccuracy: null, watchId: null, isTracking: false,
+    reportMode: false, reportLatLng: null, reportTempMarker: null,
+    activeFilters: {
+        alpeggio: true, fattoria: true, rifugio: true,
+        cani: true, cani_unconfirmed: false,
+        formaggio: false, latte: false, miele: false
+    },
+    allData: [],
+    reports: [] // Local report cache
+};
+
+const PIEMONTE = { south: 44.06, west: 6.63, north: 46.46, east: 9.21 };
+const CENTER = [45.07, 7.69];
+
+// ═══════════════════════════════════════════════════
+// CREDIBILITY SCORING
+// ═══════════════════════════════════════════════════
+function calculateCredibility(report) {
+    let score = 0;
+    const maxScore = 100;
+
+    // Base: number of confirmations vs denials
+    const confirms = report.confirmations || 0;
+    const denials = report.denials || 0;
+    const total = confirms + denials;
+
+    if (total === 0) {
+        score = 30; // New report, unverified
+    } else {
+        score = Math.round((confirms / total) * 70) + 10;
+    }
+
+    // Bonus: detailed report
+    if (report.dogCount && report.dogCount !== 'unknown') score += 5;
+    if (report.breed && report.breed !== 'altro') score += 5;
+    if (report.livestock) score += 3;
+    if (report.behavior) score += 3;
+    if (report.notes && report.notes.length > 30) score += 5;
+    if (report.trailCrossing) score += 4;
+
+    // Penalty: age decay (lose 2 points per week)
+    if (report.timestamp) {
+        const ageMs = Date.now() - report.timestamp;
+        const ageWeeks = ageMs / (7 * 24 * 60 * 60 * 1000);
+        score -= Math.floor(ageWeeks * 2);
+    }
+
+    // Bonus: proximity to known farms/alpeggi
+    if (report.nearFarm) score += 10;
+
+    return Math.max(0, Math.min(maxScore, score));
+}
+
+function getCredibilityLevel(score) {
+    if (score >= 60) return { label: 'Confermata', color: 'cred-high', textColor: '#3d7a1a' };
+    if (score >= 35) return { label: 'Probabile', color: 'cred-mid', textColor: '#9a7a20' };
+    return { label: 'Non confermata', color: 'cred-low', textColor: '#a03a30' };
+}
+
+function isNearFarm(lat, lon, radius = 0.02) {
+    return APP.allData.some(d =>
+        d.type !== 'cani' &&
+        Math.abs(d.lat - lat) < radius &&
+        Math.abs(d.lon - lon) < radius
+    );
+}
+
+// ═══════════════════════════════════════════════════
+// INIT MAP
+// ═══════════════════════════════════════════════════
+function initMap() {
+    setLoadingStatus('Inizializzazione mappa...');
+
+    APP.map = L.map('map', { center: CENTER, zoom: 8, zoomControl: false, attributionControl: true });
+
+    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 17,
+        attribution: '© <a href="https://opentopomap.org">OpenTopoMap</a> | © <a href="https://openstreetmap.org">OSM</a>'
+    }).addTo(APP.map);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(APP.map);
+
+    APP.clusterGroup = L.markerClusterGroup({
+        maxClusterRadius: 45, spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false, disableClusteringAtZoom: 15
+    });
+    APP.map.addLayer(APP.clusterGroup);
+
+    APP.map.on('click', (e) => {
+        if (APP.reportMode) {
+            placeReportMarker(e.latlng);
+        } else {
+            closeBottomSheet();
+            document.getElementById('filterPanel').classList.remove('open');
+        }
+    });
+
+    loadOverpassData();
+}
+
+// ═══════════════════════════════════════════════════
+// LOAD OVERPASS DATA
+// ═══════════════════════════════════════════════════
+async function loadOverpassData() {
+    setLoadingStatus('Scaricamento dati da OpenStreetMap...');
+    const bbox = `${PIEMONTE.south},${PIEMONTE.west},${PIEMONTE.north},${PIEMONTE.east}`;
+
+    const q = `[out:json][timeout:60];(
+        nwr["tourism"="alpine_hut"](${bbox});
+        nwr["building"="farm"]["name"](${bbox});
+        nwr["landuse"="farmyard"]["name"](${bbox});
+        nwr["animal_keeping"](${bbox});
+        nwr["shop"="farm"](${bbox});
+    );out center tags;`;
+
+    try {
+        const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q) });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        setLoadingStatus(`Elaborazione ${data.elements.length} elementi...`);
+        processElements(data.elements);
+    } catch (err) {
+        console.error('Overpass error:', err);
+        setLoadingStatus('Caricamento dati demo...');
+        loadDemo();
+    }
+}
+
+function processElements(elements) {
+    APP.allData = [];
+    elements.forEach(el => {
+        const lat = el.lat || el.center?.lat;
+        const lon = el.lon || el.center?.lon;
+        if (!lat || !lon) return;
+        const t = el.tags || {};
+        const name = t.name || t['name:it'] || t.description;
+        if (!name && t.tourism !== 'alpine_hut') return;
+
+        let type = 'fattoria', icon = '🐄';
+        if (t.tourism === 'alpine_hut') { type = 'rifugio'; icon = '🏠'; }
+        else if (t.landuse === 'farmyard' || t.animal_keeping) { type = 'alpeggio'; icon = '🏔️'; }
+
+        const products = [];
+        if (t.produce) {
+            const p = t.produce.toLowerCase();
+            if (p.includes('cheese') || p.includes('formag')) products.push('formaggio');
+            if (p.includes('milk') || p.includes('latte')) products.push('latte');
+            if (p.includes('honey') || p.includes('miele')) products.push('miele');
+        }
+        if (t.shop === 'farm' && !products.length) products.push('formaggio');
+
+        const animals = t.animal_keeping ? t.animal_keeping.split(';').map(a => a.trim()) : [];
+
+        APP.allData.push({
+            id: el.id, lat, lon, name: name || 'Rifugio alpino', type, icon,
+            ele: t.ele ? Math.round(t.ele) + ' m' : null,
+            products, animals,
+            hasGuardDogs: !!(t.guard_dog || t.hazard === 'guard_dogs'),
+            tags: t,
+            website: t.website || t['contact:website'],
+            phone: t.phone || t['contact:phone'],
+            operator: t.operator,
+            opening_hours: t.opening_hours
+        });
+    });
+
+    // Load reports (from Firebase or local demo)
+    loadReports();
+}
+
+async function loadReports() {
+    if (window.FIREBASE?.firebaseReady) {
+        try {
+            const { db, collection, getDocs, query, where } = window.FIREBASE;
+            const snap = await getDocs(collection(db, 'reports'));
+            snap.forEach(doc => {
+                const r = doc.data();
+                addReportToData(doc.id, r);
+            });
+        } catch (e) { console.error('Firebase load error:', e); }
+    } else {
+        // Demo reports
+        addDemoReports();
+    }
+
+    setLoadingStatus(`${APP.allData.length} punti sulla mappa`);
+    renderMarkers();
+    setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 600);
+}
+
+function addDemoReports() {
+    const demos = [
+        { lat: 44.29, lon: 7.08, name: "Segnalazione — Val Maira", dogCount: "2-3", breed: "maremmano", livestock: "ovini", behavior: "alert", trailCrossing: true, notes: "Cani vicino al sentiero CAI 371, abbaiavano ma non si sono avvicinati. Gregge di circa 200 pecore.", confirmations: 5, denials: 1, timestamp: Date.now() - 5*24*60*60*1000 },
+        { lat: 44.55, lon: 7.18, name: "Segnalazione — Sopra Demonte", dogCount: "4+", breed: "pastore_abruzzese", livestock: "ovini", behavior: "calm", trailCrossing: false, notes: "Cani visibili dal sentiero ma il gregge è in un vallone laterale.", confirmations: 3, denials: 0, timestamp: Date.now() - 12*24*60*60*1000 },
+        { lat: 44.67, lon: 7.02, name: "Segnalazione — Val Varaita", dogCount: "2-3", breed: "maremmano", livestock: "misto", behavior: "aggressive", trailCrossing: true, notes: "Attenzione: cani si sono avvicinati ringhiando. Passaggio difficile con cani propri. Possibile aggirare sulla dx.", confirmations: 8, denials: 2, timestamp: Date.now() - 3*24*60*60*1000 },
+        { lat: 45.15, lon: 7.05, name: "Segnalazione — Val di Susa", dogCount: "1", breed: "altro", livestock: "bovini", behavior: "calm", trailCrossing: false, notes: "Un cane grande bianco accanto alla mandria. Tranquillo.", confirmations: 1, denials: 0, timestamp: Date.now() - 20*24*60*60*1000 },
+        { lat: 45.92, lon: 8.15, name: "Segnalazione — Val d'Ossola", dogCount: "2-3", breed: "maremmano", livestock: "bovini", behavior: "alert", trailCrossing: true, notes: "Due Maremmani sul sentiero GTA. Abbaiavano forte. Passare lentamente, senza gesti bruschi.", confirmations: 4, denials: 1, timestamp: Date.now() - 8*24*60*60*1000 },
+        { lat: 44.42, lon: 6.88, name: "Segnalazione — Valle Stura", dogCount: "4+", breed: "maremmano", livestock: "ovini", behavior: "alert", trailCrossing: true, notes: "Zona con forte presenza lupo. Almeno 4 Maremmani a protezione. Sentiero 129 passa in mezzo. Consiglio di fare rumore.", confirmations: 12, denials: 1, timestamp: Date.now() - 2*24*60*60*1000 },
+        { lat: 44.80, lon: 7.35, name: "Segnalazione — Valle Po", dogCount: "unknown", breed: "altro", livestock: "caprini", behavior: "calm", trailCrossing: false, notes: "Cani visti in lontananza.", confirmations: 0, denials: 0, timestamp: Date.now() - 25*24*60*60*1000 },
+        { lat: 45.55, lon: 7.33, name: "Segnalazione — Zona Gressoney", dogCount: "2-3", breed: "pastore_abruzzese", livestock: "bovini", behavior: "calm", trailCrossing: false, notes: "Cani a guardia alpeggio. Sentiero passa a 100m, nessun problema.", confirmations: 6, denials: 3, timestamp: Date.now() - 15*24*60*60*1000 },
+    ];
+    demos.forEach((r, i) => addReportToData('demo_' + i, r));
+}
+
+function addReportToData(id, r) {
+    const nearFarm = isNearFarm(r.lat, r.lon);
+    const credScore = calculateCredibility({ ...r, nearFarm });
+    const credLevel = getCredibilityLevel(credScore);
+
+    APP.allData.push({
+        id: 'report_' + id,
+        lat: r.lat, lon: r.lon,
+        name: r.name || 'Segnalazione cani da guardiania',
+        type: credScore >= 35 ? 'cani' : 'cani_unconfirmed',
+        icon: '🐕', ele: null, products: [], animals: [],
+        hasGuardDogs: true,
+        guardDogNote: r.notes || '',
+        dogCount: r.dogCount, breed: r.breed,
+        livestock: r.livestock, behavior: r.behavior,
+        trailCrossing: r.trailCrossing,
+        confirmations: r.confirmations || 0,
+        denials: r.denials || 0,
+        timestamp: r.timestamp || Date.now(),
+        credScore, credLevel, nearFarm,
+        reportId: id,
+        tags: {}
+    });
+}
+
+function loadDemo() {
+    APP.allData = [
+        { id:'d1', lat:45.05, lon:7.32, name:"Malga Prà Catinat", type:'alpeggio', icon:'🏔️', ele:'1850 m', products:['formaggio','latte'], animals:['bovini','caprini'], hasGuardDogs:false, tags:{} },
+        { id:'d2', lat:44.98, lon:7.15, name:"Alpe Selleries", type:'alpeggio', icon:'🏔️', ele:'2023 m', products:['formaggio'], animals:['bovini'], hasGuardDogs:false, tags:{} },
+        { id:'d3', lat:45.97, lon:8.10, name:"Alpe Devero", type:'rifugio', icon:'🏠', ele:'1640 m', products:['formaggio','miele'], animals:['bovini'], hasGuardDogs:false, tags:{} },
+        { id:'d4', lat:44.67, lon:7.00, name:"Agriturismo La Meiro", type:'fattoria', icon:'🐄', ele:'1100 m', products:['formaggio','latte','miele'], animals:['bovini','caprini'], hasGuardDogs:false, tags:{} },
+    ];
+    addDemoReports();
+    renderMarkers();
+    setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 400);
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER MARKERS
+// ═══════════════════════════════════════════════════
+function renderMarkers() {
+    APP.clusterGroup.clearLayers();
+    APP.markers = [];
+    let count = 0;
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+
+    APP.allData.forEach(item => {
+        // Filter logic
+        if (item.type === 'cani' && !APP.activeFilters.cani) return;
+        if (item.type === 'cani_unconfirmed' && !APP.activeFilters.cani_unconfirmed) return;
+        if (item.type === 'alpeggio' && !APP.activeFilters.alpeggio) return;
+        if (item.type === 'fattoria' && !APP.activeFilters.fattoria) return;
+        if (item.type === 'rifugio' && !APP.activeFilters.rifugio) return;
+
+        const prodActive = APP.activeFilters.formaggio || APP.activeFilters.latte || APP.activeFilters.miele;
+        if (prodActive && !item.type.startsWith('cani')) {
+            const match = (APP.activeFilters.formaggio && item.products.includes('formaggio')) ||
+                          (APP.activeFilters.latte && item.products.includes('latte')) ||
+                          (APP.activeFilters.miele && item.products.includes('miele'));
+            if (!match) return;
+        }
+
+        if (search) {
+            const s = (item.name || '').toLowerCase() + ' ' + (item.operator || '').toLowerCase() + ' ' + (item.guardDogNote || '').toLowerCase();
+            if (!s.includes(search)) return;
+        }
+
+        const mClass = item.type === 'cani_unconfirmed' ? 'marker-cani-unconfirmed' : `marker-${item.type}`;
+        const marker = L.marker([item.lat, item.lon], {
+            icon: L.divIcon({
+                className: '',
+                html: `<div class="custom-marker ${mClass}"><span class="marker-icon">${item.icon}</span></div>`,
+                iconSize: [34, 34], iconAnchor: [17, 34]
+            })
+        });
+        marker.on('click', () => openBottomSheet(item));
+        APP.clusterGroup.addLayer(marker);
+        APP.markers.push({ marker, data: item });
+        count++;
+    });
+    document.getElementById('statusCount').textContent = count;
+}
+
+// ═══════════════════════════════════════════════════
+// BOTTOM SHEET
+// ═══════════════════════════════════════════════════
+function openBottomSheet(item) {
+    const sheet = document.getElementById('bottomSheet');
+    const content = document.getElementById('sheetContent');
+
+    const typeMap = {
+        alpeggio: ['Alpeggio', 'badge-alpeggio'],
+        fattoria: ['Fattoria', 'badge-fattoria'],
+        rifugio: ['Rifugio', 'badge-rifugio'],
+        cani: ['Segnalazione', 'badge-alpeggio'],
+        cani_unconfirmed: ['Non confermata', 'badge-fattoria']
+    };
+    const [typeLabel, badge] = typeMap[item.type] || ['Luogo', 'badge-alpeggio'];
+
+    let html = `
+        <div class="sheet-header">
+            <div class="sheet-name">${item.name || 'Senza nome'}</div>
+            <div class="sheet-type-badge ${badge}">${item.icon} ${typeLabel}</div>
+        </div>
+        <div class="sheet-meta">
+            ${item.ele ? `<div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg> ${item.ele}</div>` : ''}
+            ${item.operator ? `<div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${item.operator}</div>` : ''}
+            <div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${item.lat.toFixed(4)}, ${item.lon.toFixed(4)}</div>
+        </div>`;
+
+    // Credibility bar for reports
+    if (item.type.startsWith('cani') && item.credScore !== undefined) {
+        const cl = item.credLevel;
+        html += `
+        <div class="credibility-bar">
+            <div class="credibility-header">
+                <span class="credibility-label">Affidabilità segnalazione</span>
+                <span class="credibility-value" style="color:${cl.textColor}">${cl.label} (${item.credScore}/100)</span>
+            </div>
+            <div class="credibility-track">
+                <div class="credibility-fill ${cl.color}" style="width:${item.credScore}%"></div>
+            </div>
+        </div>`;
+
+        // Confirm / Deny buttons
+        html += `
+        <div class="confirm-buttons">
+            <button class="btn-confirm" onclick="confirmReport('${item.reportId}', true)">
+                ✓ Confermo (${item.confirmations})
+            </button>
+            <button class="btn-deny" onclick="confirmReport('${item.reportId}', false)">
+                ✗ Non presente (${item.denials})
+            </button>
+        </div>`;
+    }
+
+    // Dog warning
+    if (item.hasGuardDogs || item.type.startsWith('cani')) {
+        const breedMap = { maremmano: 'Maremmano Abruzzese', pastore_abruzzese: 'Pastore Abruzzese', altro: 'Razza non specificata' };
+        const behaviorMap = { calm: '😌 Calmi', alert: '👀 Vigili/abbaiavano', aggressive: '⚠️ Aggressivi' };
+        const countMap = { '1': '1 cane', '2-3': '2-3 cani', '4+': '4+ cani', unknown: 'N. sconosciuto' };
+
+        let details = '';
+        if (item.breed) details += `<strong>Razza:</strong> ${breedMap[item.breed] || item.breed}<br>`;
+        if (item.dogCount) details += `<strong>Numero:</strong> ${countMap[item.dogCount] || item.dogCount}<br>`;
+        if (item.behavior) details += `<strong>Comportamento:</strong> ${behaviorMap[item.behavior] || item.behavior}<br>`;
+        if (item.trailCrossing) details += `<strong>⚠️ Il sentiero passa attraverso il gregge</strong><br>`;
+
+        html += `<div class="dog-warning">
+            <div class="dog-warning-icon">🐕‍🦺</div>
+            <div class="dog-warning-text">
+                <strong>Attenzione: cani da guardiania</strong>
+                ${details}
+                ${item.guardDogNote || 'Mantenere distanza, non correre, tenere il cane al guinzaglio.'}
+            </div>
+        </div>`;
+
+        if (item.timestamp) {
+            const age = Math.floor((Date.now() - item.timestamp) / (24*60*60*1000));
+            html += `<div style="font-size:12px;color:#8a9a8f;margin-bottom:12px">Segnalato ${age === 0 ? 'oggi' : age + ' giorni fa'}${item.nearFarm ? ' · Vicino ad alpeggio registrato ✓' : ''}</div>`;
+        }
+    }
+
+    // Products / Animals
+    if (item.products.length) {
+        const pi = { formaggio:'🧀', latte:'🥛', miele:'🍯' };
+        html += `<div class="sheet-section"><div class="sheet-section-title">Prodotti</div><div class="sheet-tags">${item.products.map(p => `<span class="sheet-tag tag-product">${pi[p]||''} ${p[0].toUpperCase()+p.slice(1)}</span>`).join('')}</div></div>`;
+    }
+    if (item.animals.length) {
+        const ai = { bovini:'🐄', ovini:'🐑', caprini:'🐐', equini:'🐴', suini:'🐷' };
+        html += `<div class="sheet-section"><div class="sheet-section-title">Animali</div><div class="sheet-tags">${item.animals.map(a => `<span class="sheet-tag tag-animal">${ai[a]||'🐾'} ${a[0].toUpperCase()+a.slice(1)}</span>`).join('')}</div></div>`;
+    }
+
+    html += `<button class="sheet-nav-btn" onclick="navigateTo(${item.lat},${item.lon})">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+        Naviga qui
+    </button>`;
+
+    content.innerHTML = html;
+    sheet.classList.add('open');
+    APP.map.setView([item.lat, item.lon], Math.max(APP.map.getZoom(), 13), { animate: true });
+}
+
+function closeBottomSheet() { document.getElementById('bottomSheet').classList.remove('open'); }
+function navigateTo(lat, lon) { window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=walking`, '_blank'); }
+
+// ═══════════════════════════════════════════════════
+// CONFIRM / DENY REPORTS
+// ═══════════════════════════════════════════════════
+async function confirmReport(reportId, isConfirm) {
+    // Update local data
+    const item = APP.allData.find(d => d.reportId === reportId);
+    if (!item) return;
+
+    if (isConfirm) item.confirmations++;
+    else item.denials++;
+
+    const nearFarm = isNearFarm(item.lat, item.lon);
+    item.credScore = calculateCredibility({ ...item, nearFarm });
+    item.credLevel = getCredibilityLevel(item.credScore);
+    item.type = item.credScore >= 35 ? 'cani' : 'cani_unconfirmed';
+
+    // Update Firebase
+    if (window.FIREBASE?.firebaseReady && !reportId.startsWith('demo_')) {
+        try {
+            const { db, doc, updateDoc, increment } = window.FIREBASE;
+            await updateDoc(doc(db, 'reports', reportId), {
+                [isConfirm ? 'confirmations' : 'denials']: increment(1)
+            });
+        } catch (e) { console.warn('Firebase update failed:', e); }
+    }
+
+    renderMarkers();
+    openBottomSheet(item); // Refresh detail
+    showToast(isConfirm ? '✓ Confermata, grazie!' : '✗ Segnalazione registrata');
+}
+
+// ═══════════════════════════════════════════════════
+// REPORT MODE
+// ═══════════════════════════════════════════════════
+function enterReportMode() {
+    APP.reportMode = true;
+    document.getElementById('btnReport').classList.add('active-mode');
+    document.getElementById('reportBanner').classList.add('visible');
+    closeBottomSheet();
+    document.getElementById('filterPanel').classList.remove('open');
+    APP.map.getContainer().style.cursor = 'crosshair';
+}
+
+function exitReportMode() {
+    APP.reportMode = false;
+    document.getElementById('btnReport').classList.remove('active-mode');
+    document.getElementById('reportBanner').classList.remove('visible');
+    APP.map.getContainer().style.cursor = '';
+    if (APP.reportTempMarker) { APP.map.removeLayer(APP.reportTempMarker); APP.reportTempMarker = null; }
+    APP.reportLatLng = null;
+}
+
+function placeReportMarker(latlng) {
+    APP.reportLatLng = latlng;
+    if (APP.reportTempMarker) APP.map.removeLayer(APP.reportTempMarker);
+
+    APP.reportTempMarker = L.marker(latlng, {
+        icon: L.divIcon({
+            className: '',
+            html: '<div class="custom-marker marker-cani" style="animation: pulse-report 1s infinite"><span class="marker-icon">📍</span></div>',
+            iconSize: [34, 34], iconAnchor: [17, 34]
+        })
+    }).addTo(APP.map);
+
+    document.getElementById('reportCoords').textContent = `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+    openReportModal();
+}
+
+function openReportModal() {
+    document.getElementById('reportModal').classList.add('open');
+    exitReportMode();
+}
+
+function closeReportModal() {
+    document.getElementById('reportModal').classList.remove('open');
+    if (APP.reportTempMarker) { APP.map.removeLayer(APP.reportTempMarker); APP.reportTempMarker = null; }
+    // Reset form
+    document.querySelectorAll('.radio-option.selected').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.checkbox-row.checked').forEach(el => el.classList.remove('checked'));
+    document.getElementById('reportNotes').value = '';
+}
+
+// ═══════════════════════════════════════════════════
+// SUBMIT REPORT
+// ═══════════════════════════════════════════════════
+async function submitReport() {
+    if (!APP.reportLatLng) { showToast('⚠️ Seleziona prima un punto sulla mappa'); return; }
+
+    const dogCount = getRadioValue('dogCount');
+    const behavior = getRadioValue('dogBehavior');
+    if (!dogCount || !behavior) { showToast('⚠️ Compila i campi obbligatori'); return; }
+
+    const report = {
+        lat: APP.reportLatLng.lat,
+        lon: APP.reportLatLng.lng,
+        name: 'Segnalazione utente',
+        dogCount,
+        breed: getRadioValue('dogBreed') || 'altro',
+        livestock: getRadioValue('livestock') || 'misto',
+        behavior,
+        trailCrossing: document.getElementById('checkTrailCrossing').classList.contains('checked'),
+        notes: document.getElementById('reportNotes').value.trim(),
+        confirmations: 1,
+        denials: 0,
+        timestamp: Date.now()
+    };
+
+    const btn = document.getElementById('submitReport');
+    btn.disabled = true;
+    btn.textContent = 'Invio in corso...';
+
+    let reportId = 'local_' + Date.now();
+
+    // Save to Firebase
+    if (window.FIREBASE?.firebaseReady) {
+        try {
+            const { db, collection, addDoc, Timestamp } = window.FIREBASE;
+            const docRef = await addDoc(collection(db, 'reports'), {
+                ...report,
+                userId: window.FIREBASE.currentUser.uid,
+                createdAt: Timestamp.now()
+            });
+            reportId = docRef.id;
+        } catch (e) {
+            console.warn('Firebase save failed, saving locally:', e);
+        }
+    }
+
+    // Add to local data
+    addReportToData(reportId, report);
+    renderMarkers();
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Invia segnalazione';
+
+    closeReportModal();
+    showToast('✓ Segnalazione inviata! Verrà validata dalla community.');
+}
+
+// ═══════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════
+function getRadioValue(groupId) {
+    const sel = document.getElementById(groupId)?.querySelector('.selected');
+    return sel?.dataset.value || null;
+}
+
+function toggleCheck(el) { el.classList.toggle('checked'); }
+
+// Radio selection
+document.querySelectorAll('.radio-group').forEach(group => {
+    group.querySelectorAll('.radio-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            group.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+        });
+    });
+});
+
+// Filter chips
+document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        const f = chip.dataset.filter;
+        chip.classList.toggle('selected');
+        APP.activeFilters[f] = chip.classList.contains('selected');
+        renderMarkers();
+    });
+});
+
+// Buttons
+document.getElementById('btnFilter').addEventListener('click', () => document.getElementById('filterPanel').classList.toggle('open'));
+document.getElementById('btnReport').addEventListener('click', () => { APP.reportMode ? exitReportMode() : enterReportMode(); });
+document.getElementById('btnGps').addEventListener('click', toggleGPS);
+
+// Close filter on outside click
+document.addEventListener('click', e => {
+    const fp = document.getElementById('filterPanel');
+    const bf = document.getElementById('btnFilter');
+    if (fp.classList.contains('open') && !fp.contains(e.target) && !bf.contains(e.target)) fp.classList.remove('open');
+});
+
+// Search
+let st;
+document.getElementById('searchInput').addEventListener('input', () => { clearTimeout(st); st = setTimeout(renderMarkers, 250); });
+
+// Bottom sheet swipe
+let tsy = 0;
+document.getElementById('bottomSheet').addEventListener('touchstart', e => tsy = e.touches[0].clientY);
+document.getElementById('bottomSheet').addEventListener('touchmove', e => { if (e.touches[0].clientY - tsy > 50) closeBottomSheet(); });
+
+// GPS
+function toggleGPS() {
+    const btn = document.getElementById('btnGps');
+    if (APP.isTracking) { stopGPS(); btn.classList.remove('tracking'); }
+    else { startGPS(); btn.classList.add('tracking'); }
+}
+function startGPS() {
+    if (!navigator.geolocation) { showToast('GPS non supportato'); return; }
+    APP.isTracking = true;
+    APP.watchId = navigator.geolocation.watchPosition(pos => {
+        const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+        if (APP.userMarker) {
+            APP.userMarker.setLatLng([lat, lon]);
+            APP.userAccuracy.setLatLng([lat, lon]).setRadius(accuracy);
+        } else {
+            APP.userMarker = L.marker([lat, lon], {
+                icon: L.divIcon({ className: '', html: '<div class="user-marker"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }),
+                zIndexOffset: 1000
+            }).addTo(APP.map);
+            APP.userAccuracy = L.circle([lat, lon], { radius: accuracy, className: 'user-accuracy', interactive: false }).addTo(APP.map);
+            APP.map.setView([lat, lon], 13, { animate: true });
+        }
+    }, () => { showToast('Errore GPS — controlla i permessi'); stopGPS(); document.getElementById('btnGps').classList.remove('tracking'); },
+    { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 });
+}
+function stopGPS() {
+    APP.isTracking = false;
+    if (APP.watchId !== null) { navigator.geolocation.clearWatch(APP.watchId); APP.watchId = null; }
+    if (APP.userMarker) { APP.map.removeLayer(APP.userMarker); APP.map.removeLayer(APP.userAccuracy); APP.userMarker = APP.userAccuracy = null; }
+}
+
+// Toast
+function showToast(msg, duration = 3000) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('visible');
+    setTimeout(() => t.classList.remove('visible'), duration);
+}
+
+function setLoadingStatus(text) { const el = document.getElementById('loadingStatus'); if (el) el.textContent = text; }
+
+// Firebase ready callback
+window.onFirebaseReady = () => { console.log('Firebase connected — reports will be synced'); };
+
+// Init
+document.addEventListener('DOMContentLoaded', initMap);
+
+// Service Worker
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+</script>
+</body>
+</html>
