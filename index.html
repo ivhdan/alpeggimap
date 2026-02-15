@@ -284,6 +284,34 @@
         .structure-info-bivacco { background: rgba(212,168,75,0.08); color: #8a6d2a; }
         .structure-info-malga { background: rgba(140,198,63,0.08); color: #3d7a1a; }
 
+        /* Confirm dialog */
+        .confirm-overlay {
+            position: fixed; inset: 0; z-index: 2500;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: all 0.25s ease;
+        }
+        .confirm-overlay.open { opacity: 1; visibility: visible; }
+        .confirm-box {
+            background: var(--card-bg); border-radius: 20px;
+            padding: 28px 24px; margin: 20px;
+            max-width: 340px; width: 100%; text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .confirm-icon { font-size: 42px; margin-bottom: 12px; }
+        .confirm-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text-dark); margin-bottom: 8px; }
+        .confirm-text { font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
+        .confirm-coords { font-size: 12px; color: #8a9a8f; font-family: monospace; margin-bottom: 20px; }
+        .confirm-buttons { display: flex; gap: 10px; }
+        .confirm-btn {
+            flex: 1; padding: 14px; border-radius: 12px; border: none;
+            font-family: var(--font-body); font-size: 15px; font-weight: 700; cursor: pointer;
+        }
+        .confirm-btn-yes { background: var(--accent-danger); color: white; }
+        .confirm-btn-yes:active { transform: scale(0.96); }
+        .confirm-btn-no { background: rgba(27,47,37,0.08); color: var(--text-secondary); }
+        .confirm-btn-no:active { transform: scale(0.96); }
+
         .sheet-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
         .meta-item { display: flex; align-items: center; gap: 5px; font-size: 15px; color: #6b7c72; }
         .meta-item svg { width: 17px; height: 17px; stroke: #8cc63f; }
@@ -469,6 +497,12 @@
             background: transparent; color: white; font-family: var(--font-body);
             font-size: 12px; font-weight: 600; cursor: pointer;
         }
+        .report-banner-gps {
+            padding: 6px 14px; border-radius: 8px; border: none;
+            background: white; color: #a03a30; font-family: var(--font-body);
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            margin-left: auto;
+        }
 
         /* ── LOADING ─────────────────────── */
         .loading-overlay {
@@ -520,7 +554,18 @@
         .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background: rgba(27,47,37,0.65) !important; backdrop-filter: blur(4px); }
         .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div { background: var(--accent-primary) !important; color: var(--bg-deep) !important; font-family: var(--font-body) !important; font-weight: 700 !important; }
 
-        .user-marker { width: 20px; height: 20px; background: var(--accent-sky); border: 3px solid white; border-radius: 50%; box-shadow: 0 0 0 5px rgba(91,164,207,0.3), 0 2px 8px rgba(0,0,0,0.3); }
+        .user-marker {
+            width: 28px; height: 28px;
+            background: var(--accent-sky);
+            border: 3.5px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 6px rgba(91,164,207,0.3), 0 2px 10px rgba(0,0,0,0.35);
+            animation: user-pulse 2.5s ease-in-out infinite;
+        }
+        @keyframes user-pulse {
+            0%,100% { box-shadow: 0 0 0 6px rgba(91,164,207,0.3), 0 2px 10px rgba(0,0,0,0.35); }
+            50% { box-shadow: 0 0 0 14px rgba(91,164,207,0.08), 0 2px 10px rgba(0,0,0,0.35); }
+        }
         .user-accuracy { border: 2px solid rgba(91,164,207,0.2); background: rgba(91,164,207,0.06); }
 
         /* ── TOAST ────────────────────────── */
@@ -590,8 +635,9 @@
     <span style="font-size:20px">🐕‍🦺</span>
     <div class="report-banner-text">
         <strong>Modalità segnalazione</strong><br>
-        Tocca sulla mappa dove hai visto i cani da guardiania
+        Tocca sulla mappa dove hai visto i cani
     </div>
+    <button class="report-banner-gps" id="btnReportGps" onclick="useMyPositionForReport()">📍 Qui</button>
     <button class="report-banner-cancel" onclick="exitReportMode()">Annulla</button>
 </div>
 
@@ -615,6 +661,20 @@
 <div class="bottom-sheet" id="bottomSheet">
     <div class="sheet-handle"></div>
     <div id="sheetContent"></div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirmDialog">
+    <div class="confirm-box">
+        <div class="confirm-icon">🐕‍🦺</div>
+        <div class="confirm-title">Sei sicuro della segnalazione?</div>
+        <div class="confirm-text">Stai per segnalare la presenza di cani da guardiania in questa posizione.</div>
+        <div class="confirm-coords" id="confirmCoords"></div>
+        <div class="confirm-buttons">
+            <button class="confirm-btn confirm-btn-yes" onclick="confirmReport()">✓ Sì, prosegui</button>
+            <button class="confirm-btn confirm-btn-no" onclick="cancelReport()">✗ Annulla</button>
+        </div>
+    </div>
 </div>
 
 <!-- REPORT MODAL -->
@@ -765,9 +825,6 @@ function calculateCredibility(report) {
         score -= Math.floor(ageWeeks * 2);
     }
 
-    // Bonus: proximity to known farms/alpeggi
-    if (report.nearFarm) score += 10;
-
     return Math.max(0, Math.min(maxScore, score));
 }
 
@@ -777,13 +834,6 @@ function getCredibilityLevel(score) {
     return { label: 'Non confermata', color: 'cred-low', textColor: '#a03a30' };
 }
 
-function isNearFarm(lat, lon, radius = 0.02) {
-    return APP.allData.some(d =>
-        d.type !== 'cani' &&
-        Math.abs(d.lat - lat) < radius &&
-        Math.abs(d.lon - lon) < radius
-    );
-}
 
 // ═══════════════════════════════════════════════════
 // INIT MAP
@@ -932,22 +982,11 @@ async function loadReports() {
 }
 
 function addDemoReports() {
-    const demos = [
-        { lat: 44.29, lon: 7.08, name: "Segnalazione — Val Maira", dogCount: "2-3", breed: "maremmano", livestock: "ovini", behavior: "alert", trailCrossing: true, notes: "Cani vicino al sentiero CAI 371, abbaiavano ma non si sono avvicinati. Gregge di circa 200 pecore.", confirmations: 5, denials: 1, timestamp: Date.now() - 5*24*60*60*1000 },
-        { lat: 44.55, lon: 7.18, name: "Segnalazione — Sopra Demonte", dogCount: "4+", breed: "pastore_abruzzese", livestock: "ovini", behavior: "calm", trailCrossing: false, notes: "Cani visibili dal sentiero ma il gregge è in un vallone laterale.", confirmations: 3, denials: 0, timestamp: Date.now() - 12*24*60*60*1000 },
-        { lat: 44.67, lon: 7.02, name: "Segnalazione — Val Varaita", dogCount: "2-3", breed: "maremmano", livestock: "misto", behavior: "aggressive", trailCrossing: true, notes: "Attenzione: cani si sono avvicinati ringhiando. Passaggio difficile con cani propri. Possibile aggirare sulla dx.", confirmations: 8, denials: 2, timestamp: Date.now() - 3*24*60*60*1000 },
-        { lat: 45.15, lon: 7.05, name: "Segnalazione — Val di Susa", dogCount: "1", breed: "altro", livestock: "bovini", behavior: "calm", trailCrossing: false, notes: "Un cane grande bianco accanto alla mandria. Tranquillo.", confirmations: 1, denials: 0, timestamp: Date.now() - 20*24*60*60*1000 },
-        { lat: 45.92, lon: 8.15, name: "Segnalazione — Val d'Ossola", dogCount: "2-3", breed: "maremmano", livestock: "bovini", behavior: "alert", trailCrossing: true, notes: "Due Maremmani sul sentiero GTA. Abbaiavano forte. Passare lentamente, senza gesti bruschi.", confirmations: 4, denials: 1, timestamp: Date.now() - 8*24*60*60*1000 },
-        { lat: 44.42, lon: 6.88, name: "Segnalazione — Valle Stura", dogCount: "4+", breed: "maremmano", livestock: "ovini", behavior: "alert", trailCrossing: true, notes: "Zona con forte presenza lupo. Almeno 4 Maremmani a protezione. Sentiero 129 passa in mezzo. Consiglio di fare rumore.", confirmations: 12, denials: 1, timestamp: Date.now() - 2*24*60*60*1000 },
-        { lat: 44.80, lon: 7.35, name: "Segnalazione — Valle Po", dogCount: "unknown", breed: "altro", livestock: "caprini", behavior: "calm", trailCrossing: false, notes: "Cani visti in lontananza.", confirmations: 0, denials: 0, timestamp: Date.now() - 25*24*60*60*1000 },
-        { lat: 45.55, lon: 7.33, name: "Segnalazione — Zona Gressoney", dogCount: "2-3", breed: "pastore_abruzzese", livestock: "bovini", behavior: "calm", trailCrossing: false, notes: "Cani a guardia alpeggio. Sentiero passa a 100m, nessun problema.", confirmations: 6, denials: 3, timestamp: Date.now() - 15*24*60*60*1000 },
-    ];
-    demos.forEach((r, i) => addReportToData('demo_' + i, r));
+    // Nessun report demo — i marker cane appaiono SOLO da segnalazioni reali
 }
 
 function addReportToData(id, r) {
-    const nearFarm = isNearFarm(r.lat, r.lon);
-    const credScore = calculateCredibility({ ...r, nearFarm });
+    const credScore = calculateCredibility(r);
     const credLevel = getCredibilityLevel(credScore);
 
     APP.allData.push({
@@ -964,7 +1003,7 @@ function addReportToData(id, r) {
         confirmations: r.confirmations || 0,
         denials: r.denials || 0,
         timestamp: r.timestamp || Date.now(),
-        credScore, credLevel, nearFarm,
+        credScore, credLevel,
         reportId: id,
         tags: {}
     });
@@ -1088,7 +1127,6 @@ function openBottomSheet(item) {
                 <span class="dog-report-label">📊 Segnalazioni totali</span>
                 <span class="dog-report-value">${totalReports} (${item.confirmations} conferme, ${item.denials} smentite)</span>
             </div>
-            ${item.nearFarm ? '<div class="dog-report-row"><span class="dog-report-label">📍 Posizione</span><span class="dog-report-value">✅ Vicino ad alpeggio registrato</span></div>' : ''}
         </div>`;
 
         // Credibility bar
@@ -1192,8 +1230,7 @@ async function confirmReport(reportId, isConfirm) {
     if (isConfirm) item.confirmations++;
     else item.denials++;
 
-    const nearFarm = isNearFarm(item.lat, item.lon);
-    item.credScore = calculateCredibility({ ...item, nearFarm });
+    item.credScore = calculateCredibility(item);
     item.credLevel = getCredibilityLevel(item.credScore);
     item.type = item.credScore >= 35 ? 'cani' : 'cani_unconfirmed';
 
@@ -1219,9 +1256,20 @@ function enterReportMode() {
     APP.reportMode = true;
     document.getElementById('btnReport').classList.add('active-mode');
     document.getElementById('reportBanner').classList.add('visible');
+    // Mostra/nascondi pulsante "Qui" in base a GPS attivo
+    document.getElementById('btnReportGps').style.display = APP.userMarker ? 'block' : 'none';
     closeBottomSheet();
     document.getElementById('filterPanel').classList.remove('open');
     APP.map.getContainer().style.cursor = 'crosshair';
+}
+
+function useMyPositionForReport() {
+    if (!APP.userMarker) {
+        showToast('GPS non attivo — attiva la localizzazione');
+        return;
+    }
+    const latlng = APP.userMarker.getLatLng();
+    placeReportMarker(latlng);
 }
 
 function exitReportMode() {
@@ -1245,8 +1293,29 @@ function placeReportMarker(latlng) {
         })
     }).addTo(APP.map);
 
-    document.getElementById('reportCoords').textContent = `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+    // Centra sulla posizione segnalata
+    APP.map.setView(latlng, APP.map.getZoom(), { animate: true });
+
+    // Mostra dialogo di conferma
+    showConfirmDialog(latlng);
+}
+
+function showConfirmDialog(latlng) {
+    document.getElementById('confirmCoords').textContent = `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+    document.getElementById('confirmDialog').classList.add('open');
+}
+
+function confirmReport() {
+    document.getElementById('confirmDialog').classList.remove('open');
+    document.getElementById('reportCoords').textContent = `${APP.reportLatLng.lat.toFixed(5)}, ${APP.reportLatLng.lng.toFixed(5)}`;
     openReportModal();
+}
+
+function cancelReport() {
+    document.getElementById('confirmDialog').classList.remove('open');
+    if (APP.reportTempMarker) { APP.map.removeLayer(APP.reportTempMarker); APP.reportTempMarker = null; }
+    APP.reportLatLng = null;
+    exitReportMode();
 }
 
 function openReportModal() {
@@ -1394,8 +1463,8 @@ function startGPS() {
             APP.userAccuracy.setLatLng([lat, lon]).setRadius(accuracy);
         } else {
             APP.userMarker = L.marker([lat, lon], {
-                icon: L.divIcon({ className: '', html: '<div class="user-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }),
-                zIndexOffset: 1000
+                icon: L.divIcon({ className: '', html: '<div class="user-marker"></div>', iconSize: [28, 28], iconAnchor: [14, 14] }),
+                zIndexOffset: 1000, interactive: false
             }).addTo(APP.map);
             APP.userAccuracy = L.circle([lat, lon], { radius: accuracy, className: 'user-accuracy', interactive: false }).addTo(APP.map);
             APP.map.setView([lat, lon], 14, { animate: true });
