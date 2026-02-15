@@ -253,6 +253,7 @@
         .badge-malga { background: rgba(140,198,63,0.12); color: #3d7a1a; }
         .badge-cani { background: rgba(212,75,79,0.12); color: #a03a30; }
         .badge-unconfirmed { background: rgba(150,150,150,0.12); color: #666; }
+        .badge-libera { background: rgba(120,170,110,0.12); color: #4a7a3a; }
 
         /* Dog report card */
         .dog-report-card {
@@ -312,6 +313,32 @@
         .confirm-btn-no { background: rgba(27,47,37,0.08); color: var(--text-secondary); }
         .confirm-btn-no:active { transform: scale(0.96); }
 
+        /* Report state banners */
+        .report-state-banner {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 14px; border-radius: var(--radius-sm);
+            margin-bottom: 14px; line-height: 1.5;
+        }
+        .state-icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+        .state-text { font-size: 14px; }
+        .state-text strong { font-size: 15px; display: block; margin-bottom: 2px; }
+        .state-nuova { background: rgba(150,150,150,0.08); color: #666; border: 1px solid rgba(150,150,150,0.15); }
+        .state-confermata { background: rgba(212,75,79,0.06); color: #8a3530; border: 1px solid rgba(212,75,79,0.15); }
+        .state-libera { background: rgba(100,170,90,0.06); color: #3d7a1a; border: 1px solid rgba(100,170,90,0.15); }
+
+        /* Action buttons */
+        .report-action-buttons { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+        .btn-action {
+            width: 100%; padding: 14px; border-radius: 12px; border: none;
+            font-family: var(--font-body); font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: transform 0.1s;
+        }
+        .btn-action:active { transform: scale(0.97); }
+        .btn-action-confirm { background: rgba(212,75,79,0.1); color: #a03a30; }
+        .btn-action-free { background: rgba(100,170,90,0.1); color: #3d7a1a; }
+        .btn-action-large { padding: 16px; font-size: 16px; }
+        .btn-action-small { padding: 10px; font-size: 13px; font-weight: 600; opacity: 0.7; }
+
         .sheet-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
         .meta-item { display: flex; align-items: center; gap: 5px; font-size: 15px; color: #6b7c72; }
         .meta-item svg { width: 17px; height: 17px; stroke: #8cc63f; }
@@ -332,27 +359,6 @@
         .dog-warning-icon { font-size: 26px; flex-shrink: 0; margin-top: 1px; }
         .dog-warning-text { font-size: 15px; color: #a03a30; line-height: 1.45; }
         .dog-warning-text strong { display: block; margin-bottom: 2px; }
-
-        /* Credibility bar */
-        .credibility-bar { margin-bottom: 12px; }
-        .credibility-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-        .credibility-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: #8a9a8f; font-weight: 700; }
-        .credibility-value { font-size: 14px; font-weight: 700; }
-        .credibility-track { width: 100%; height: 8px; background: rgba(27,47,37,0.08); border-radius: 4px; overflow: hidden; }
-        .credibility-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
-        .cred-low { background: var(--accent-danger); }
-        .cred-mid { background: var(--accent-gold); }
-        .cred-high { background: var(--accent-primary); }
-
-        .confirm-buttons { display: flex; gap: 8px; margin-bottom: 12px; }
-        .btn-confirm, .btn-deny {
-            flex: 1; padding: 12px; border-radius: var(--radius-sm); border: none;
-            font-family: var(--font-body); font-size: 15px; font-weight: 600;
-            cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px;
-        }
-        .btn-confirm:active, .btn-deny:active { transform: scale(0.96); }
-        .btn-confirm { background: rgba(140,198,63,0.12); color: #3d7a1a; border: 1px solid rgba(140,198,63,0.25); }
-        .btn-deny { background: rgba(212,75,79,0.08); color: #a03a30; border: 1px solid rgba(212,75,79,0.2); }
 
         .sheet-nav-btn {
             display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -550,6 +556,7 @@
         .marker-malga { background: var(--accent-primary); border: 2px solid #6ba02e; }
         .marker-cani { background: var(--accent-danger); border: 2px solid #993530; }
         .marker-cani-unconfirmed { background: #bbb; border: 2px solid #888; opacity: 0.75; }
+        .marker-cani_libera { background: #a8c4a0; border: 2px solid #7a9a72; opacity: 0.7; }
 
         .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background: rgba(27,47,37,0.65) !important; backdrop-filter: blur(4px); }
         .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div { background: var(--accent-primary) !important; color: var(--bg-deep) !important; font-family: var(--font-body) !important; font-weight: 700 !important; }
@@ -653,7 +660,8 @@
     <div class="filter-group">
         <div class="filter-group-label">Segnalazioni cani</div>
         <button class="filter-chip selected" data-filter="cani"><span class="chip-icon">🐕</span> Confermate</button>
-        <button class="filter-chip" data-filter="cani_unconfirmed"><span class="chip-icon">❓</span> Non confermate</button>
+        <button class="filter-chip selected" data-filter="cani_unconfirmed"><span class="chip-icon">❓</span> Da confermare</button>
+        <button class="filter-chip" data-filter="cani_libera"><span class="chip-icon">🔓</span> Aree libere</button>
     </div>
 </div>
 
@@ -783,7 +791,7 @@ const APP = {
     reportMode: false, reportLatLng: null, reportTempMarker: null,
     activeFilters: {
         malga: true, rifugio: true, bivacco: true,
-        cani: true, cani_unconfirmed: false
+        cani: true, cani_unconfirmed: true, cani_libera: false
     },
     allData: [],
     reports: [] // Local report cache
@@ -793,45 +801,58 @@ const PIEMONTE = { south: 44.06, west: 6.63, north: 46.46, east: 9.21 };
 const CENTER = [45.07, 7.69];
 
 // ═══════════════════════════════════════════════════
-// CREDIBILITY SCORING
+// REPORT LIFECYCLE — 3 conferme per cambiare stato
 // ═══════════════════════════════════════════════════
-function calculateCredibility(report) {
-    let score = 0;
-    const maxScore = 100;
+// Stati: NUOVA → CONFERMATA → LIBERA → ARCHIVIATA
+//
+// NUOVA:       conferme_presenza < 3 (icona ❓)
+// CONFERMATA:  conferme_presenza >= 3 (icona 🐕)
+// LIBERA:      conferme_libera >= 3   (icona 🔓)
+// ARCHIVIATA:  libera da 7gg OPPURE nessuna conferma da 30gg → sparisce
 
-    // Base: number of confirmations vs denials
-    const confirms = report.confirmations || 0;
-    const denials = report.denials || 0;
-    const total = confirms + denials;
+function getReportState(report) {
+    const cp = report.conferme_presenza || 0;
+    const cl = report.conferme_libera || 0;
+    const now = Date.now();
 
-    if (total === 0) {
-        score = 30; // New report, unverified
-    } else {
-        score = Math.round((confirms / total) * 70) + 10;
+    // Decadimento temporale: ultima conferma di presenza
+    const lastPresenza = report.lastConfirmPresenza || report.timestamp || now;
+    const daysSincePresenza = (now - lastPresenza) / (24 * 60 * 60 * 1000);
+
+    // ARCHIVIATA: libera da 7+ giorni oppure nessuna conferma presenza da 30+ giorni
+    if (cl >= 3) {
+        const lastLibera = report.lastConfirmLibera || now;
+        const daysSinceLibera = (now - lastLibera) / (24 * 60 * 60 * 1000);
+        if (daysSinceLibera >= 7) {
+            return { stato: 'archiviata', type: 'archiviata', icon: '', label: '', color: '' };
+        }
+        return {
+            stato: 'libera', type: 'cani_libera', icon: '🔓',
+            label: 'Area segnalata libera', color: '#8a9a8f',
+            badge: 'badge-libera'
+        };
     }
 
-    // Bonus: detailed report
-    if (report.dogCount && report.dogCount !== 'unknown') score += 5;
-    if (report.breed && report.breed !== 'altro') score += 5;
-    if (report.livestock) score += 3;
-    if (report.behavior) score += 3;
-    if (report.notes && report.notes.length > 30) score += 5;
-    if (report.trailCrossing) score += 4;
-
-    // Penalty: age decay (lose 2 points per week)
-    if (report.timestamp) {
-        const ageMs = Date.now() - report.timestamp;
-        const ageWeeks = ageMs / (7 * 24 * 60 * 60 * 1000);
-        score -= Math.floor(ageWeeks * 2);
+    // Decadimento: dopo 30gg senza conferme → archiviata
+    if (cp >= 3 && daysSincePresenza >= 30) {
+        return { stato: 'archiviata', type: 'archiviata', icon: '', label: '', color: '' };
     }
 
-    return Math.max(0, Math.min(maxScore, score));
-}
+    // CONFERMATA
+    if (cp >= 3) {
+        return {
+            stato: 'confermata', type: 'cani', icon: '🐕',
+            label: 'Presenza confermata', color: '#a03a30',
+            badge: 'badge-cani'
+        };
+    }
 
-function getCredibilityLevel(score) {
-    if (score >= 60) return { label: 'Confermata', color: 'cred-high', textColor: '#3d7a1a' };
-    if (score >= 35) return { label: 'Probabile', color: 'cred-mid', textColor: '#9a7a20' };
-    return { label: 'Non confermata', color: 'cred-low', textColor: '#a03a30' };
+    // NUOVA
+    return {
+        stato: 'nuova', type: 'cani_unconfirmed', icon: '❓',
+        label: 'Non ancora confermata', color: '#888',
+        badge: 'badge-unconfirmed'
+    };
 }
 
 
@@ -986,24 +1007,28 @@ function addDemoReports() {
 }
 
 function addReportToData(id, r) {
-    const credScore = calculateCredibility(r);
-    const credLevel = getCredibilityLevel(credScore);
+    const state = getReportState(r);
+
+    // Se archiviata, non aggiungere
+    if (state.stato === 'archiviata') return;
 
     APP.allData.push({
         id: 'report_' + id,
         lat: r.lat, lon: r.lon,
         name: r.name || 'Segnalazione cani da guardiania',
-        type: credScore >= 35 ? 'cani' : 'cani_unconfirmed',
-        icon: '🐕', ele: null, products: [], animals: [],
+        type: state.type, icon: state.icon,
+        ele: null, products: [], animals: [],
         hasGuardDogs: true,
         guardDogNote: r.notes || '',
         dogCount: r.dogCount, breed: r.breed,
         livestock: r.livestock, behavior: r.behavior,
         trailCrossing: r.trailCrossing,
-        confirmations: r.confirmations || 0,
-        denials: r.denials || 0,
+        conferme_presenza: r.conferme_presenza || r.confirmations || 0,
+        conferme_libera: r.conferme_libera || r.denials || 0,
+        lastConfirmPresenza: r.lastConfirmPresenza || r.timestamp || Date.now(),
+        lastConfirmLibera: r.lastConfirmLibera || null,
         timestamp: r.timestamp || Date.now(),
-        credScore, credLevel,
+        stato: state.stato, stateInfo: state,
         reportId: id,
         tags: {}
     });
@@ -1034,6 +1059,8 @@ function renderMarkers() {
         // Filter logic
         if (item.type === 'cani' && !APP.activeFilters.cani) return;
         if (item.type === 'cani_unconfirmed' && !APP.activeFilters.cani_unconfirmed) return;
+        if (item.type === 'cani_libera' && !APP.activeFilters.cani_libera) return;
+        if (item.type === 'archiviata') return; // Mai mostrare archiviate
         if (item.type === 'malga' && !APP.activeFilters.malga) return;
         if (item.type === 'rifugio' && !APP.activeFilters.rifugio) return;
         if (item.type === 'bivacco' && !APP.activeFilters.bivacco) return;
@@ -1043,7 +1070,7 @@ function renderMarkers() {
             if (!s.includes(search)) return;
         }
 
-        const mClass = item.type === 'cani_unconfirmed' ? 'marker-cani-unconfirmed' : `marker-${item.type}`;
+        const mClass = item.type === 'cani_unconfirmed' ? 'marker-cani-unconfirmed' : item.type === 'cani_libera' ? 'marker-cani_libera' : `marker-${item.type}`;
         const marker = L.marker([item.lat, item.lon], {
             icon: L.divIcon({
                 className: '',
@@ -1070,8 +1097,9 @@ function openBottomSheet(item) {
         rifugio: ['Rifugio', 'badge-rifugio'],
         bivacco: ['Bivacco', 'badge-bivacco'],
         malga: ['Malga / Alpeggio', 'badge-malga'],
-        cani: ['⚠️ Cani segnalati', 'badge-cani'],
-        cani_unconfirmed: ['Segnalazione non confermata', 'badge-unconfirmed']
+        cani: ['⚠️ Presenza confermata', 'badge-cani'],
+        cani_unconfirmed: ['❓ Da confermare', 'badge-unconfirmed'],
+        cani_libera: ['🔓 Area segnalata libera', 'badge-libera']
     };
     const [typeLabel, badge] = typeMap[item.type] || ['Luogo', 'badge-malga'];
 
@@ -1098,16 +1126,47 @@ function openBottomSheet(item) {
             else timeStr = `${dd}/${mo}/${yr} alle ${hh}:${mm} (${age} giorni fa)`;
         }
 
-        const totalReports = (item.confirmations || 0) + (item.denials || 0) + 1;
+        const cp = item.conferme_presenza || 0;
+        const cl = item.conferme_libera || 0;
+
+        // ── FUMETTO STATO ──
+        let stateBanner = '';
+        if (item.stato === 'nuova') {
+            stateBanner = `<div class="report-state-banner state-nuova">
+                <div class="state-icon">❓</div>
+                <div class="state-text">
+                    <strong>Segnalazione recente</strong><br>
+                    Non ancora confermata (${cp}/3 conferme). Se passi in zona, aiutaci a verificare!
+                </div>
+            </div>`;
+        } else if (item.stato === 'confermata') {
+            stateBanner = `<div class="report-state-banner state-confermata">
+                <div class="state-icon">⚠️</div>
+                <div class="state-text">
+                    <strong>Attenzione</strong><br>
+                    In questa zona è stata segnalata la presenza di cani da guardiania. Procedi con cautela e, se l'area risulta libera, segnalalo.
+                </div>
+            </div>`;
+        } else if (item.stato === 'libera') {
+            stateBanner = `<div class="report-state-banner state-libera">
+                <div class="state-icon">🟢</div>
+                <div class="state-text">
+                    <strong>Area segnalata come libera</strong><br>
+                    Il gregge potrebbe essersi spostato. Se noti ancora la presenza di cani, segnalalo.
+                </div>
+            </div>`;
+        }
 
         html += `
         <div class="sheet-header">
             <div class="sheet-name">${item.name || 'Segnalazione cani da guardiania'}</div>
         </div>
 
+        ${stateBanner}
+
         <div class="dog-report-card">
             <div class="dog-report-row">
-                <span class="dog-report-label">📅 Ultimo avvistamento</span>
+                <span class="dog-report-label">📅 Segnalazione</span>
                 <span class="dog-report-value">${timeStr || 'Data sconosciuta'}</span>
             </div>
             <div class="dog-report-row">
@@ -1124,36 +1183,40 @@ function openBottomSheet(item) {
             </div>
             ${item.trailCrossing ? '<div class="dog-report-row trail-warning"><span class="dog-report-label">🚶 Sentiero</span><span class="dog-report-value">⚠️ Il sentiero passa attraverso il gregge</span></div>' : ''}
             <div class="dog-report-row">
-                <span class="dog-report-label">📊 Segnalazioni totali</span>
-                <span class="dog-report-value">${totalReports} (${item.confirmations} conferme, ${item.denials} smentite)</span>
+                <span class="dog-report-label">📊 Stato</span>
+                <span class="dog-report-value">${cp}/3 conferme presenza · ${cl}/3 area libera</span>
             </div>
         </div>`;
 
-        // Credibility bar
-        if (item.credScore !== undefined) {
-            const cl = item.credLevel;
+        // ── PULSANTI AZIONE in base allo stato ──
+        if (item.stato === 'nuova') {
             html += `
-            <div class="credibility-bar">
-                <div class="credibility-header">
-                    <span class="credibility-label">Affidabilità</span>
-                    <span class="credibility-value" style="color:${cl.textColor}">${cl.label} — ${item.credScore}/100</span>
-                </div>
-                <div class="credibility-track">
-                    <div class="credibility-fill ${cl.color}" style="width:${item.credScore}%"></div>
-                </div>
+            <div class="report-action-buttons">
+                <button class="btn-action btn-action-confirm" onclick="voteReport('${item.reportId}', 'presenza')">
+                    🐕 Confermo presenza (${cp}/3)
+                </button>
+                <button class="btn-action btn-action-free" onclick="voteReport('${item.reportId}', 'libera')">
+                    🟢 Non presenti (${cl}/3)
+                </button>
+            </div>`;
+        } else if (item.stato === 'confermata') {
+            html += `
+            <div class="report-action-buttons">
+                <button class="btn-action btn-action-free btn-action-large" onclick="voteReport('${item.reportId}', 'libera')">
+                    🟢 Area libera — cani non presenti (${cl}/3)
+                </button>
+                <button class="btn-action btn-action-confirm btn-action-small" onclick="voteReport('${item.reportId}', 'presenza')">
+                    🐕 Confermo ancora la presenza
+                </button>
+            </div>`;
+        } else if (item.stato === 'libera') {
+            html += `
+            <div class="report-action-buttons">
+                <button class="btn-action btn-action-confirm" onclick="voteReport('${item.reportId}', 'presenza')">
+                    ⚠️ I cani sono tornati (${cp}/3)
+                </button>
             </div>`;
         }
-
-        // Confirm / Deny
-        html += `
-        <div class="confirm-buttons">
-            <button class="btn-confirm" onclick="confirmReport('${item.reportId}', true)">
-                ✓ Confermo (${item.confirmations})
-            </button>
-            <button class="btn-deny" onclick="confirmReport('${item.reportId}', false)">
-                ✗ Non presente (${item.denials})
-            </button>
-        </div>`;
 
         // Notes
         if (item.guardDogNote) {
@@ -1220,33 +1283,79 @@ function closeBottomSheet() { document.getElementById('bottomSheet').classList.r
 function navigateTo(lat, lon) { window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=walking`, '_blank'); }
 
 // ═══════════════════════════════════════════════════
-// CONFIRM / DENY REPORTS
+// VOTE REPORT — Ciclo di vita a 3 conferme
 // ═══════════════════════════════════════════════════
-async function confirmReport(reportId, isConfirm) {
-    // Update local data
+async function voteReport(reportId, voteType) {
     const item = APP.allData.find(d => d.reportId === reportId);
     if (!item) return;
 
-    if (isConfirm) item.confirmations++;
-    else item.denials++;
+    const now = Date.now();
 
-    item.credScore = calculateCredibility(item);
-    item.credLevel = getCredibilityLevel(item.credScore);
-    item.type = item.credScore >= 35 ? 'cani' : 'cani_unconfirmed';
+    if (voteType === 'presenza') {
+        item.conferme_presenza = (item.conferme_presenza || 0) + 1;
+        item.lastConfirmPresenza = now;
+        // Se raggiunge 3 conferme presenza: reset conferme libera
+        if (item.conferme_presenza >= 3) {
+            item.conferme_libera = 0;
+            item.lastConfirmLibera = null;
+        }
+    } else if (voteType === 'libera') {
+        item.conferme_libera = (item.conferme_libera || 0) + 1;
+        item.lastConfirmLibera = now;
+        // Se raggiunge 3 conferme libera: reset conferme presenza
+        if (item.conferme_libera >= 3) {
+            item.conferme_presenza = 0;
+            item.lastConfirmPresenza = null;
+        }
+    }
+
+    // Ricalcola stato
+    const state = getReportState(item);
+    item.stato = state.stato;
+    item.stateInfo = state;
+    item.type = state.type;
+    item.icon = state.icon;
 
     // Update Firebase
-    if (window.FIREBASE?.firebaseReady && !reportId.startsWith('demo_')) {
+    if (window.FIREBASE?.firebaseReady) {
         try {
-            const { db, doc, updateDoc, increment } = window.FIREBASE;
-            await updateDoc(doc(db, 'reports', reportId), {
-                [isConfirm ? 'confirmations' : 'denials']: increment(1)
-            });
+            const { db, doc, updateDoc } = window.FIREBASE;
+            const updates = {
+                conferme_presenza: item.conferme_presenza,
+                conferme_libera: item.conferme_libera,
+                lastConfirmPresenza: item.lastConfirmPresenza,
+                lastConfirmLibera: item.lastConfirmLibera
+            };
+            await updateDoc(doc(db, 'reports', reportId), updates);
         } catch (e) { console.warn('Firebase update failed:', e); }
     }
 
     renderMarkers();
-    openBottomSheet(item); // Refresh detail
-    showToast(isConfirm ? '✓ Confermata, grazie!' : '✗ Segnalazione registrata');
+
+    // Messaggi contestuali
+    if (voteType === 'presenza') {
+        if (item.conferme_presenza >= 3) {
+            showToast('⚠️ Presenza confermata — segnalazione attiva!');
+        } else {
+            showToast(`🐕 Conferma registrata (${item.conferme_presenza}/3)`);
+        }
+    } else {
+        if (item.conferme_libera >= 3) {
+            showToast('🟢 Area segnalata come libera!');
+        } else {
+            showToast(`🟢 Segnalazione registrata (${item.conferme_libera}/3)`);
+        }
+    }
+
+    // Se archiviata, chiudi bottom sheet
+    if (state.stato === 'archiviata') {
+        closeBottomSheet();
+        // Rimuovi dai dati
+        APP.allData = APP.allData.filter(d => d.reportId !== reportId);
+        renderMarkers();
+    } else {
+        openBottomSheet(item);
+    }
 }
 
 // ═══════════════════════════════════════════════════
@@ -1352,8 +1461,10 @@ async function submitReport() {
         behavior,
         trailCrossing: document.getElementById('checkTrailCrossing').classList.contains('checked'),
         notes: document.getElementById('reportNotes').value.trim(),
-        confirmations: 1,
-        denials: 0,
+        conferme_presenza: 1,
+        conferme_libera: 0,
+        lastConfirmPresenza: Date.now(),
+        lastConfirmLibera: null,
         timestamp: Date.now()
     };
 
@@ -1386,7 +1497,7 @@ async function submitReport() {
     btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Invia segnalazione';
 
     closeReportModal();
-    showToast('✓ Segnalazione inviata! Verrà validata dalla community.');
+    showToast('✓ Segnalazione inviata! Serviranno 3 conferme per attivarla.');
 }
 
 // ═══════════════════════════════════════════════════
