@@ -846,8 +846,6 @@ async function loadOverpassData() {
 
     const q = `[out:json][timeout:60];(
         nwr["tourism"="alpine_hut"](${bbox});
-        nwr["building"="farm"]["name"](${bbox});
-        nwr["landuse"="farmyard"]["name"](${bbox});
         nwr["animal_keeping"](${bbox});
     );out center tags;`;
 
@@ -873,6 +871,10 @@ function processElements(elements) {
         const t = el.tags || {};
         const name = t.name || t['name:it'] || t.description;
         if (!name && t.tourism !== 'alpine_hut') return;
+
+        // Filtro altitudine: solo zone montane (>600m) se il dato è disponibile
+        const ele = parseFloat(t.ele);
+        if (!isNaN(ele) && ele < 600) return;
 
         let type = 'alpeggio', icon = '🐑';
         if (t.tourism === 'alpine_hut') { type = 'rifugio'; icon = '🏠'; }
