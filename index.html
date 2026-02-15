@@ -823,7 +823,7 @@ function initMap() {
         navigator.geolocation.getCurrentPosition(
             (pos) => {
                 const { latitude: lat, longitude: lon } = pos.coords;
-                APP.map.setView([lat, lon], 13, { animate: true });
+                APP.map.setView([lat, lon], 14, { animate: true });
                 startGPS();
                 document.getElementById('btnGps').classList.add('tracking');
             },
@@ -1374,8 +1374,15 @@ document.getElementById('bottomSheet').addEventListener('touchmove', e => { if (
 // GPS
 function toggleGPS() {
     const btn = document.getElementById('btnGps');
-    if (APP.isTracking) { stopGPS(); btn.classList.remove('tracking'); }
-    else { startGPS(); btn.classList.add('tracking'); }
+    if (APP.isTracking) {
+        // Se già attivo, ri-centra sulla posizione attuale
+        if (APP.userMarker) {
+            APP.map.setView(APP.userMarker.getLatLng(), 14, { animate: true });
+            showToast('📍 Posizione centrata');
+        }
+        return;
+    }
+    startGPS(); btn.classList.add('tracking');
 }
 function startGPS() {
     if (!navigator.geolocation) { showToast('GPS non supportato'); return; }
@@ -1391,7 +1398,7 @@ function startGPS() {
                 zIndexOffset: 1000
             }).addTo(APP.map);
             APP.userAccuracy = L.circle([lat, lon], { radius: accuracy, className: 'user-accuracy', interactive: false }).addTo(APP.map);
-            APP.map.setView([lat, lon], 13, { animate: true });
+            APP.map.setView([lat, lon], 14, { animate: true });
         }
     }, () => { showToast('Errore GPS — controlla i permessi'); stopGPS(); document.getElementById('btnGps').classList.remove('tracking'); },
     { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 });
