@@ -247,8 +247,9 @@
             font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
             flex-shrink: 0;
         }
-        .badge-alpeggio { background: rgba(140,198,63,0.12); color: #3d7a1a; }
         .badge-rifugio { background: rgba(91,164,207,0.12); color: #2a6d96; }
+        .badge-bivacco { background: rgba(212,168,75,0.12); color: #8a6d2a; }
+        .badge-malga { background: rgba(140,198,63,0.12); color: #3d7a1a; }
         .badge-cani { background: rgba(212,75,79,0.12); color: #a03a30; }
         .badge-unconfirmed { background: rgba(150,150,150,0.12); color: #666; }
 
@@ -272,6 +273,15 @@
         .dog-notes { margin-bottom: 14px; }
         .dog-notes-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: #8a9a8f; font-weight: 700; margin-bottom: 6px; }
         .dog-notes-text { font-size: 15px; color: var(--text-dark); line-height: 1.5; padding: 10px 14px; background: rgba(27,47,37,0.03); border-radius: var(--radius-sm); border-left: 3px solid var(--accent-gold); }
+
+        /* Structure info */
+        .structure-info {
+            font-size: 14px; line-height: 1.5; padding: 10px 14px;
+            border-radius: var(--radius-sm); margin-bottom: 12px;
+        }
+        .structure-info-rifugio { background: rgba(91,164,207,0.08); color: #2a6d96; }
+        .structure-info-bivacco { background: rgba(212,168,75,0.08); color: #8a6d2a; }
+        .structure-info-malga { background: rgba(140,198,63,0.08); color: #3d7a1a; }
 
         .sheet-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
         .meta-item { display: flex; align-items: center; gap: 5px; font-size: 15px; color: #6b7c72; }
@@ -500,8 +510,9 @@
             transition: transform 0.15s;
         }
         .custom-marker .marker-icon { transform: rotate(45deg); font-size: 20px; line-height: 1; }
-        .marker-alpeggio { background: var(--accent-primary); border: 2px solid #6ba02e; }
         .marker-rifugio { background: var(--accent-sky); border: 2px solid #3a7ca5; }
+        .marker-bivacco { background: var(--accent-gold); border: 2px solid #a8832e; }
+        .marker-malga { background: var(--accent-primary); border: 2px solid #6ba02e; }
         .marker-cani { background: var(--accent-danger); border: 2px solid #993530; }
         .marker-cani-unconfirmed { background: #bbb; border: 2px solid #888; opacity: 0.75; }
 
@@ -588,8 +599,9 @@
     <div class="filter-title">Filtra mappa</div>
     <div class="filter-group">
         <div class="filter-group-label">Strutture</div>
-        <button class="filter-chip selected" data-filter="alpeggio"><span class="chip-icon">🐑</span> Malghe / Alpeggi</button>
         <button class="filter-chip selected" data-filter="rifugio"><span class="chip-icon">🏠</span> Rifugi</button>
+        <button class="filter-chip selected" data-filter="bivacco"><span class="chip-icon">⛺</span> Bivacchi</button>
+        <button class="filter-chip selected" data-filter="malga"><span class="chip-icon">🐄</span> Malghe</button>
     </div>
     <div class="filter-group">
         <div class="filter-group-label">Segnalazioni cani</div>
@@ -685,8 +697,9 @@
     <div class="status-content">
         <div><span class="status-count" id="statusCount">0</span> punti</div>
         <div class="status-legend">
-            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-primary)"></div> Malghe</div>
             <div class="legend-item"><div class="legend-dot" style="background:var(--accent-sky)"></div> Rifugi</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-gold)"></div> Bivacchi</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-primary)"></div> Malghe</div>
             <div class="legend-item"><div class="legend-dot" style="background:var(--accent-danger)"></div> Cani</div>
         </div>
     </div>
@@ -708,7 +721,7 @@ const APP = {
     userMarker: null, userAccuracy: null, watchId: null, isTracking: false,
     reportMode: false, reportLatLng: null, reportTempMarker: null,
     activeFilters: {
-        alpeggio: true, rifugio: true,
+        malga: true, rifugio: true, bivacco: true,
         cani: true, cani_unconfirmed: false
     },
     allData: [],
@@ -846,6 +859,7 @@ async function loadOverpassData() {
 
     const q = `[out:json][timeout:60];(
         nwr["tourism"="alpine_hut"](${bbox});
+        nwr["tourism"="wilderness_hut"](${bbox});
         nwr["animal_keeping"](${bbox});
     );out center tags;`;
 
@@ -872,17 +886,18 @@ function processElements(elements) {
         const name = t.name || t['name:it'] || t.description;
         if (!name && t.tourism !== 'alpine_hut') return;
 
-        // Filtro altitudine: solo zone montane (>600m) se il dato è disponibile
+        // Filtro altitudine: solo zone montane (>800m) se il dato è disponibile
         const ele = parseFloat(t.ele);
-        if (!isNaN(ele) && ele < 600) return;
+        if (!isNaN(ele) && ele < 800) return;
 
-        let type = 'alpeggio', icon = '🐑';
+        let type = 'malga', icon = '🐄';
         if (t.tourism === 'alpine_hut') { type = 'rifugio'; icon = '🏠'; }
+        else if (t.tourism === 'wilderness_hut') { type = 'bivacco'; icon = '⛺'; }
 
         const animals = t.animal_keeping ? t.animal_keeping.split(';').map(a => a.trim()) : [];
 
         APP.allData.push({
-            id: el.id, lat, lon, name: name || (type === 'rifugio' ? 'Rifugio alpino' : 'Malga'), type, icon,
+            id: el.id, lat, lon, name: name || (type === 'rifugio' ? 'Rifugio alpino' : type === 'bivacco' ? 'Bivacco' : 'Malga'), type, icon,
             ele: t.ele ? Math.round(t.ele) + ' m' : null,
             products: [], animals,
             hasGuardDogs: !!(t.guard_dog || t.hazard === 'guard_dogs'),
@@ -959,9 +974,10 @@ function addReportToData(id, r) {
 
 function loadDemo() {
     APP.allData = [
-        { id:'d1', lat:45.05, lon:7.32, name:"Malga Prà Catinat", type:'alpeggio', icon:'🐑', ele:'1850 m', products:[], animals:['bovini','caprini'], hasGuardDogs:false, tags:{} },
-        { id:'d2', lat:44.98, lon:7.15, name:"Alpe Selleries", type:'alpeggio', icon:'🐑', ele:'2023 m', products:[], animals:['bovini'], hasGuardDogs:false, tags:{} },
-        { id:'d3', lat:45.97, lon:8.10, name:"Rifugio Alpe Devero", type:'rifugio', icon:'🏠', ele:'1640 m', products:[], animals:['bovini'], hasGuardDogs:false, tags:{} },
+        { id:'d1', lat:45.05, lon:7.32, name:"Malga Prà Catinat", type:'malga', icon:'🐄', ele:'1850 m', products:[], animals:['bovini','caprini'], hasGuardDogs:false, tags:{} },
+        { id:'d2', lat:44.98, lon:7.15, name:"Alpe Selleries", type:'malga', icon:'🐄', ele:'2023 m', products:[], animals:['bovini'], hasGuardDogs:false, tags:{} },
+        { id:'d3', lat:45.97, lon:8.10, name:"Rifugio Alpe Devero", type:'rifugio', icon:'🏠', ele:'1640 m', products:[], animals:[], hasGuardDogs:false, tags:{} },
+        { id:'d4', lat:45.18, lon:7.08, name:"Bivacco Boarelli", type:'bivacco', icon:'⛺', ele:'2110 m', products:[], animals:[], hasGuardDogs:false, tags:{} },
     ];
     addDemoReports();
     renderMarkers();
@@ -981,8 +997,9 @@ function renderMarkers() {
         // Filter logic
         if (item.type === 'cani' && !APP.activeFilters.cani) return;
         if (item.type === 'cani_unconfirmed' && !APP.activeFilters.cani_unconfirmed) return;
-        if (item.type === 'alpeggio' && !APP.activeFilters.alpeggio) return;
+        if (item.type === 'malga' && !APP.activeFilters.malga) return;
         if (item.type === 'rifugio' && !APP.activeFilters.rifugio) return;
+        if (item.type === 'bivacco' && !APP.activeFilters.bivacco) return;
 
         if (search) {
             const s = (item.name || '').toLowerCase() + ' ' + (item.operator || '').toLowerCase() + ' ' + (item.guardDogNote || '').toLowerCase();
@@ -1013,12 +1030,13 @@ function openBottomSheet(item) {
     const content = document.getElementById('sheetContent');
 
     const typeMap = {
-        alpeggio: ['Malga / Alpeggio', 'badge-alpeggio'],
         rifugio: ['Rifugio', 'badge-rifugio'],
+        bivacco: ['Bivacco', 'badge-bivacco'],
+        malga: ['Malga / Alpeggio', 'badge-malga'],
         cani: ['⚠️ Cani segnalati', 'badge-cani'],
         cani_unconfirmed: ['Segnalazione non confermata', 'badge-unconfirmed']
     };
-    const [typeLabel, badge] = typeMap[item.type] || ['Luogo', 'badge-alpeggio'];
+    const [typeLabel, badge] = typeMap[item.type] || ['Luogo', 'badge-malga'];
 
     let html = '';
 
@@ -1124,6 +1142,15 @@ function openBottomSheet(item) {
             ${item.operator ? `<div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${item.operator}</div>` : ''}
             <div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${item.lat.toFixed(4)}, ${item.lon.toFixed(4)}</div>
         </div>`;
+
+        // Info specifica per tipo struttura
+        if (item.type === 'rifugio') {
+            html += `<div class="structure-info structure-info-rifugio">🟢 <strong>Punto di assistenza</strong> — Presidiato dal rifugista durante l'apertura. Possibilità di ristoro, pernottamento e soccorso.</div>`;
+        } else if (item.type === 'bivacco') {
+            html += `<div class="structure-info structure-info-bivacco">🟡 <strong>Riparo d'emergenza</strong> — Non presidiato. Comfort ridotto al minimo, sempre aperto.</div>`;
+        } else if (item.type === 'malga') {
+            html += `<div class="structure-info structure-info-malga">🟢 <strong>Malga / Alpeggio</strong> — Attività di allevamento stagionale. Non fa parte della rete di soccorso.</div>`;
+        }
 
         // Animals only (no products)
         if (item.animals.length) {
