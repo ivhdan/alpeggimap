@@ -164,16 +164,17 @@
 
         /* ── FLOATING GPS BUTTON ─────────── */
         .fab-gps {
-            position: fixed; bottom: 80px; right: 16px; z-index: 999;
-            width: 56px; height: 56px; border-radius: 50%;
+            position: fixed; bottom: 52px; left: 50%; transform: translateX(-50%);
+            z-index: 999;
+            width: 52px; height: 52px; border-radius: 50%;
             background: var(--accent-primary); color: var(--bg-deep);
             border: none; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 16px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2);
             transition: all 0.2s ease;
         }
-        .fab-gps:active { transform: scale(0.9); }
-        .fab-gps svg { width: 28px; height: 28px; }
+        .fab-gps:active { transform: translateX(-50%) scale(0.9); }
+        .fab-gps svg { width: 26px; height: 26px; }
         .fab-gps.tracking {
             background: var(--accent-sky);
             animation: pulse-gps 2s infinite;
@@ -816,33 +817,17 @@ function initMap() {
 
     loadOverpassData();
 
-    // Auto-GPS all'avvio
+    // Auto-GPS all'avvio — usa la stessa funzione del pulsante
     if (navigator.geolocation) {
         setLoadingStatus('Rilevamento posizione GPS...');
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+                const { latitude: lat, longitude: lon } = pos.coords;
                 APP.map.setView([lat, lon], 13, { animate: true });
-                APP.userMarker = L.marker([lat, lon], {
-                    icon: L.divIcon({ className: '', html: '<div class="user-marker"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }),
-                    zIndexOffset: 1000
-                }).addTo(APP.map);
-                APP.userAccuracy = L.circle([lat, lon], { radius: accuracy, className: 'user-accuracy', interactive: false }).addTo(APP.map);
-                // Attiva tracking continuo
-                APP.isTracking = true;
+                startGPS();
                 document.getElementById('btnGps').classList.add('tracking');
-                APP.watchId = navigator.geolocation.watchPosition(
-                    (p) => {
-                        const { latitude: la, longitude: lo, accuracy: ac } = p.coords;
-                        APP.userMarker.setLatLng([la, lo]);
-                        APP.userAccuracy.setLatLng([la, lo]).setRadius(ac);
-                    },
-                    () => {},
-                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
-                );
             },
             () => {
-                // GPS negato o non disponibile, resta sulla vista Piemonte
                 console.log('GPS non disponibile, vista regionale');
             },
             { enableHighAccuracy: true, timeout: 10000 }
