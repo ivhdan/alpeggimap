@@ -916,6 +916,10 @@ async function loadOverpassData() {
     const q = `[out:json][timeout:60];(
         nwr["tourism"="alpine_hut"](${bbox});
         nwr["tourism"="wilderness_hut"](${bbox});
+        nwr["amenity"="shelter"]["shelter_type"="basic_hut"](${bbox});
+        nwr["building"="farm"]["name"](${bbox});
+        nwr["landuse"="farmyard"]["name"](${bbox});
+        nwr["building"="hut"]["name"](${bbox});
         nwr["animal_keeping"](${bbox});
     );out center tags;`;
 
@@ -934,24 +938,34 @@ async function loadOverpassData() {
 
 function processElements(elements) {
     APP.allData = [];
+    const seen = new Set(); // Deduplicazione
     elements.forEach(el => {
         const lat = el.lat || el.center?.lat;
         const lon = el.lon || el.center?.lon;
         if (!lat || !lon) return;
+        const key = `${el.type}_${el.id}`;
+        if (seen.has(key)) return;
+        seen.add(key);
         const t = el.tags || {};
         const name = t.name || t['name:it'] || t.description;
-        if (!name && t.tourism !== 'alpine_hut') return;
+
+        // Determina tipo struttura
+        const isRifugio = t.tourism === 'alpine_hut';
+        const isBivacco = t.tourism === 'wilderness_hut' || (t.amenity === 'shelter' && t.shelter_type === 'basic_hut');
+        const isAlpineStructure = isRifugio || isBivacco;
+
+        // Senza nome: accetta solo rifugi e bivacchi
+        if (!name && !isAlpineStructure) return;
 
         // Filtro altitudine: solo zone montane (>800m)
         const ele = parseFloat(t.ele);
-        const isAlpineStructure = t.tourism === 'alpine_hut' || t.tourism === 'wilderness_hut';
 
         if (!isAlpineStructure) {
             // Per malghe/allevamenti: filtro rigoroso
             // Se ha quota: deve essere >= 800m
             if (!isNaN(ele) && ele < 800) return;
             // Se NON ha quota: accetta solo se il nome contiene parole alpine
-            const alpineKeywords = /\b(malga|alpe|alpeggio|alp |mont|cima|colle|passo|baita|gias|grange)\b/i;
+            const alpineKeywords = /\b(malga|alpe|alpeggio|alp |mont|cima|colle|passo|baita|gias|grange|taschin|tramut)\b/i;
             if (isNaN(ele) && name && !alpineKeywords.test(name)) return;
             if (isNaN(ele) && !name) return;
         } else {
@@ -960,8 +974,8 @@ function processElements(elements) {
         }
 
         let type = 'malga', icon = '🐄';
-        if (t.tourism === 'alpine_hut') { type = 'rifugio'; icon = '🏠'; }
-        else if (t.tourism === 'wilderness_hut') { type = 'bivacco'; icon = '⛺'; }
+        if (isRifugio) { type = 'rifugio'; icon = '🏠'; }
+        else if (isBivacco) { type = 'bivacco'; icon = '⛺'; }
 
         const animals = t.animal_keeping ? t.animal_keeping.split(';').map(a => a.trim()) : [];
 
@@ -979,6 +993,10 @@ function processElements(elements) {
     });
 
     // Load reports (from Firebase or local demo)
+    // Debug: mostra riepilogo
+    const counts = APP.allData.reduce((acc, d) => { acc[d.type] = (acc[d.type] || 0) + 1; return acc; }, {});
+    console.log('AlpeggiMap — Dati caricati:', counts, '— Totale:', APP.allData.length);
+
     loadReports();
 }
 
