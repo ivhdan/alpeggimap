@@ -938,41 +938,39 @@ async function loadOverpassData() {
 
 function processElements(elements) {
     APP.allData = [];
-    const seen = new Set(); // Deduplicazione
+    const seen = new Set();
+    let stats = { total: elements.length, noCoords: 0, duplicate: 0, noName: 0, eleLow: 0, noKeyword: 0, accepted: 0 };
+
     elements.forEach(el => {
         const lat = el.lat || el.center?.lat;
         const lon = el.lon || el.center?.lon;
-        if (!lat || !lon) return;
+        if (!lat || !lon) { stats.noCoords++; return; }
+
         const key = `${el.type}_${el.id}`;
-        if (seen.has(key)) return;
+        if (seen.has(key)) { stats.duplicate++; return; }
         seen.add(key);
+
         const t = el.tags || {};
         const name = t.name || t['name:it'] || t.description;
 
-        // Determina tipo struttura
         const isRifugio = t.tourism === 'alpine_hut';
         const isBivacco = t.tourism === 'wilderness_hut' || (t.amenity === 'shelter' && t.shelter_type === 'basic_hut');
         const isAlpineStructure = isRifugio || isBivacco;
 
-        // Senza nome: accetta solo rifugi e bivacchi
-        if (!name && !isAlpineStructure) return;
+        if (!name && !isAlpineStructure) { stats.noName++; return; }
 
-        // Filtro altitudine: solo zone montane (>800m)
         const ele = parseFloat(t.ele);
 
         if (!isAlpineStructure) {
-            // Per malghe/allevamenti: filtro rigoroso
-            // Se ha quota: deve essere >= 800m
-            if (!isNaN(ele) && ele < 800) return;
-            // Se NON ha quota: accetta solo se il nome contiene parole alpine
+            if (!isNaN(ele) && ele < 800) { stats.eleLow++; return; }
             const alpineKeywords = /\b(malga|alpe|alpeggio|alp |mont|cima|colle|passo|baita|gias|grange|taschin|tramut)\b/i;
-            if (isNaN(ele) && name && !alpineKeywords.test(name)) return;
-            if (isNaN(ele) && !name) return;
+            if (isNaN(ele) && name && !alpineKeywords.test(name)) { stats.noKeyword++; return; }
+            if (isNaN(ele) && !name) { stats.noName++; return; }
         } else {
-            // Rifugi/bivacchi: filtra solo se quota esplicita < 800m
-            if (!isNaN(ele) && ele < 800) return;
+            if (!isNaN(ele) && ele < 800) { stats.eleLow++; return; }
         }
 
+        stats.accepted++;
         let type = 'malga', icon = '🐄';
         if (isRifugio) { type = 'rifugio'; icon = '🏠'; }
         else if (isBivacco) { type = 'bivacco'; icon = '⛺'; }
@@ -980,8 +978,10 @@ function processElements(elements) {
         const animals = t.animal_keeping ? t.animal_keeping.split(';').map(a => a.trim()) : [];
 
         APP.allData.push({
-            id: el.id, lat, lon, name: name || (type === 'rifugio' ? 'Rifugio alpino' : type === 'bivacco' ? 'Bivacco' : 'Malga'), type, icon,
-            ele: t.ele ? Math.round(t.ele) + ' m' : null,
+            id: el.id, lat, lon,
+            name: name || (type === 'rifugio' ? 'Rifugio alpino' : type === 'bivacco' ? 'Bivacco' : 'Malga'),
+            type, icon,
+            ele: t.ele ? Math.round(parseFloat(t.ele)) + ' m' : null,
             products: [], animals,
             hasGuardDogs: !!(t.guard_dog || t.hazard === 'guard_dogs'),
             tags: t,
@@ -992,10 +992,10 @@ function processElements(elements) {
         });
     });
 
-    // Load reports (from Firebase or local demo)
-    // Debug: mostra riepilogo
+    // Debug riepilogo
     const counts = APP.allData.reduce((acc, d) => { acc[d.type] = (acc[d.type] || 0) + 1; return acc; }, {});
-    console.log('AlpeggiMap — Dati caricati:', counts, '— Totale:', APP.allData.length);
+    console.log('AlpeggiMap — Filtri:', stats);
+    console.log('AlpeggiMap — Risultato:', counts, '— Totale:', APP.allData.length);
 
     loadReports();
 }
