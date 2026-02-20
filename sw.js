@@ -1,4 +1,4 @@
-const CACHE_NAME = 'alpeggi-map-v14';
+const CACHE_NAME = 'alpeggi-map-v16';
 const STATIC_ASSETS = [
   '/index.html',
   '/manifest.json',

@@ -22,7 +22,7 @@
     <!-- Firebase SDK (modular) -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-        import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, limit, doc, updateDoc, increment, Timestamp, GeoPoint } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, limit, doc, updateDoc, setDoc, getDoc, increment, Timestamp, GeoPoint } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
         // ═══════════════════════════════════════════════════
@@ -56,7 +56,7 @@
                     if (user) {
                         currentUser = user;
                         firebaseReady = true;
-                        window.FIREBASE = { db, auth, currentUser, firebaseReady, collection, addDoc, getDocs, query, where, orderBy, limit, doc, updateDoc, increment, Timestamp, GeoPoint };
+                        window.FIREBASE = { db, auth, currentUser, firebaseReady, collection, addDoc, getDocs, query, where, orderBy, limit, doc, updateDoc, setDoc, getDoc, increment, Timestamp, GeoPoint };
                         console.log('Firebase ready, user:', user.uid);
                         if (typeof window.onFirebaseReady === 'function') window.onFirebaseReady();
                     }
@@ -1003,15 +1003,31 @@ function processElements(elements) {
 async function loadReports() {
     if (window.FIREBASE?.firebaseReady) {
         try {
-            const { db, collection, getDocs, query, where } = window.FIREBASE;
-            const snap = await getDocs(collection(db, 'reports'));
-            snap.forEach(doc => {
+            const { db, collection, getDocs } = window.FIREBASE;
+
+            // Carica report e contatori in parallelo
+            const [reportsSnap, countsSnap] = await Promise.all([
+                getDocs(collection(db, 'reports')),
+                getDocs(collection(db, 'report_counts'))
+            ]);
+
+            // Mappa contatori per reportId
+            const countsMap = {};
+            countsSnap.forEach(doc => { countsMap[doc.id] = doc.data(); });
+
+            // Unisci report con contatori
+            reportsSnap.forEach(doc => {
                 const r = doc.data();
+                const counts = countsMap[doc.id] || {};
+                // I contatori live sovrascrivono quelli iniziali del report
+                r.conferme_presenza = counts.conferme_presenza ?? r.conferme_presenza ?? 1;
+                r.conferme_libera = counts.conferme_libera ?? r.conferme_libera ?? 0;
+                r.lastConfirmPresenza = counts.lastConfirmPresenza ?? r.lastConfirmPresenza ?? r.timestamp;
+                r.lastConfirmLibera = counts.lastConfirmLibera ?? r.lastConfirmLibera ?? null;
                 addReportToData(doc.id, r);
             });
         } catch (e) { console.error('Firebase load error:', e); }
     } else {
-        // Demo reports
         addDemoReports();
     }
 
@@ -1302,28 +1318,87 @@ function navigateTo(lat, lon) { window.open(`https://www.google.com/maps/dir/?ap
 
 // ═══════════════════════════════════════════════════
 // VOTE REPORT — Ciclo di vita a 3 conferme
+// Anti-duplicati: 1 utente = 1 voto per segnalazione
 // ═══════════════════════════════════════════════════
 async function voteReport(reportId, voteType) {
     const item = APP.allData.find(d => d.reportId === reportId);
     if (!item) return;
 
     const now = Date.now();
+    const F = window.FIREBASE;
 
-    if (voteType === 'presenza') {
-        item.conferme_presenza = (item.conferme_presenza || 0) + 1;
-        item.lastConfirmPresenza = now;
-        // Se raggiunge 3 conferme presenza: reset conferme libera
-        if (item.conferme_presenza >= 3) {
-            item.conferme_libera = 0;
-            item.lastConfirmLibera = null;
+    // ── Anti-duplicato: controlla se ha già votato ──
+    if (F?.firebaseReady) {
+        try {
+            const voteRef = F.doc(F.db, 'reports', reportId, 'votes', F.currentUser.uid);
+            const existingVote = await F.getDoc(voteRef);
+
+            if (existingVote.exists()) {
+                const oldVote = existingVote.data();
+                if (oldVote.tipo === voteType) {
+                    showToast('⚠️ Hai già votato per questa segnalazione');
+                    return;
+                }
+                // Cambio voto: aggiorna il tipo
+                await F.setDoc(voteRef, { tipo: voteType, timestamp: now });
+                showToast('📝 Voto aggiornato');
+            } else {
+                // Primo voto
+                await F.setDoc(voteRef, { tipo: voteType, timestamp: now });
+            }
+
+            // Ricalcola contatori dai voti reali
+            const votesSnap = await F.getDocs(F.collection(F.db, 'reports', reportId, 'votes'));
+            let cp = 0, cl = 0, lastP = null, lastL = null;
+
+            votesSnap.forEach(vDoc => {
+                const v = vDoc.data();
+                if (v.tipo === 'presenza') {
+                    cp++;
+                    if (!lastP || v.timestamp > lastP) lastP = v.timestamp;
+                } else if (v.tipo === 'libera') {
+                    cl++;
+                    if (!lastL || v.timestamp > lastL) lastL = v.timestamp;
+                }
+            });
+
+            // +1 per il voto iniziale del creatore (non è nella subcollection)
+            cp += 1;
+            if (!lastP) lastP = item.timestamp;
+
+            // Reset contatori se soglia raggiunta
+            if (cl >= 3) { cp = 0; lastP = null; }
+            if (cp >= 3 && cl < 3) { cl = 0; lastL = null; }
+
+            // Salva contatori
+            await F.setDoc(F.doc(F.db, 'report_counts', reportId), {
+                conferme_presenza: cp,
+                conferme_libera: cl,
+                lastConfirmPresenza: lastP,
+                lastConfirmLibera: lastL
+            });
+
+            // Aggiorna locale
+            item.conferme_presenza = cp;
+            item.conferme_libera = cl;
+            item.lastConfirmPresenza = lastP;
+            item.lastConfirmLibera = lastL;
+
+        } catch (e) {
+            console.error('Vote error:', e);
+            showToast('❌ Errore nel salvataggio del voto');
+            return;
         }
-    } else if (voteType === 'libera') {
-        item.conferme_libera = (item.conferme_libera || 0) + 1;
-        item.lastConfirmLibera = now;
-        // Se raggiunge 3 conferme libera: reset conferme presenza
-        if (item.conferme_libera >= 3) {
-            item.conferme_presenza = 0;
-            item.lastConfirmPresenza = null;
+    } else {
+        // Offline: aggiorna solo localmente
+        if (voteType === 'presenza') {
+            item.conferme_presenza = (item.conferme_presenza || 0) + 1;
+            item.lastConfirmPresenza = now;
+            if (item.conferme_presenza >= 3) { item.conferme_libera = 0; item.lastConfirmLibera = null; }
+        } else {
+            item.conferme_libera = (item.conferme_libera || 0) + 1;
+            item.lastConfirmLibera = now;
+            if (item.conferme_libera >= 3) { item.conferme_presenza = 0; item.lastConfirmPresenza = null; }
         }
     }
 
@@ -1334,41 +1409,22 @@ async function voteReport(reportId, voteType) {
     item.type = state.type;
     item.icon = state.icon;
 
-    // Update Firebase
-    if (window.FIREBASE?.firebaseReady) {
-        try {
-            const { db, doc, updateDoc } = window.FIREBASE;
-            const updates = {
-                conferme_presenza: item.conferme_presenza,
-                conferme_libera: item.conferme_libera,
-                lastConfirmPresenza: item.lastConfirmPresenza,
-                lastConfirmLibera: item.lastConfirmLibera
-            };
-            await updateDoc(doc(db, 'reports', reportId), updates);
-        } catch (e) { console.warn('Firebase update failed:', e); }
-    }
-
     renderMarkers();
 
     // Messaggi contestuali
-    if (voteType === 'presenza') {
-        if (item.conferme_presenza >= 3) {
-            showToast('⚠️ Presenza confermata — segnalazione attiva!');
+    if (F?.firebaseReady) {
+        // Il toast è già stato mostrato sopra per duplicati/aggiornamenti
+        if (voteType === 'presenza') {
+            if (item.conferme_presenza >= 3) showToast('⚠️ Presenza confermata — segnalazione attiva!');
+            else showToast(`🐕 Conferma registrata (${item.conferme_presenza}/3)`);
         } else {
-            showToast(`🐕 Conferma registrata (${item.conferme_presenza}/3)`);
-        }
-    } else {
-        if (item.conferme_libera >= 3) {
-            showToast('🟢 Area segnalata come libera!');
-        } else {
-            showToast(`🟢 Segnalazione registrata (${item.conferme_libera}/3)`);
+            if (item.conferme_libera >= 3) showToast('🟢 Area segnalata come libera!');
+            else showToast(`🟢 Segnalazione registrata (${item.conferme_libera}/3)`);
         }
     }
 
-    // Se archiviata, chiudi bottom sheet
     if (state.stato === 'archiviata') {
         closeBottomSheet();
-        // Rimuovi dai dati
         APP.allData = APP.allData.filter(d => d.reportId !== reportId);
         renderMarkers();
     } else {
@@ -1495,13 +1551,21 @@ async function submitReport() {
     // Save to Firebase
     if (window.FIREBASE?.firebaseReady) {
         try {
-            const { db, collection, addDoc, Timestamp } = window.FIREBASE;
-            const docRef = await addDoc(collection(db, 'reports'), {
+            const F = window.FIREBASE;
+            const docRef = await F.addDoc(F.collection(F.db, 'reports'), {
                 ...report,
-                userId: window.FIREBASE.currentUser.uid,
-                createdAt: Timestamp.now()
+                userId: F.currentUser.uid,
+                createdAt: F.Timestamp.now()
             });
             reportId = docRef.id;
+
+            // Crea contatori iniziali separati
+            await F.setDoc(F.doc(F.db, 'report_counts', reportId), {
+                conferme_presenza: 1,
+                conferme_libera: 0,
+                lastConfirmPresenza: report.timestamp,
+                lastConfirmLibera: null
+            });
         } catch (e) {
             console.warn('Firebase save failed, saving locally:', e);
         }
