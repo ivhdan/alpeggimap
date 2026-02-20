@@ -1,7 +1,8 @@
-const CACHE_NAME = 'alpeggi-map-v16';
+const CACHE_NAME = 'alpeggi-map-v17';
 const STATIC_ASSETS = [
-  '/index.html',
-  '/manifest.json',
+  './',
+  './index.html',
+  './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css',
@@ -52,8 +53,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For API requests, network only
-  if (event.request.url.includes('overpass-api.de')) {
+  // For API requests (Overpass, Firebase), network only
+  if (event.request.url.includes('overpass-api.de') ||
+      event.request.url.includes('firestore.googleapis.com') ||
+      event.request.url.includes('firebase') ||
+      event.request.url.includes('identitytoolkit.googleapis.com')) {
     event.respondWith(
       fetch(event.request).catch(() => {
         return new Response(JSON.stringify({ elements: [] }), {

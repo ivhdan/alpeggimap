@@ -542,6 +542,7 @@
         .loading-status { margin-top: 16px; font-size: 12px; color: var(--text-muted); text-align: center; }
 
         /* ── CUSTOM MARKERS ──────────────── */
+        /* Full icon markers (zoom >= 12) */
         .custom-marker {
             display: flex; align-items: center; justify-content: center;
             width: 44px; height: 44px;
@@ -551,6 +552,14 @@
             transition: transform 0.15s;
         }
         .custom-marker .marker-icon { transform: rotate(45deg); font-size: 20px; line-height: 1; }
+
+        /* Dot markers (zoom < 12) */
+        .dot-marker {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
         .marker-rifugio { background: var(--accent-sky); border: 2px solid #3a7ca5; }
         .marker-bivacco { background: var(--accent-gold); border: 2px solid #a8832e; }
         .marker-malga { background: var(--accent-primary); border: 2px solid #6ba02e; }
@@ -562,18 +571,18 @@
         .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div { background: var(--accent-primary) !important; color: var(--bg-deep) !important; font-family: var(--font-body) !important; font-weight: 700 !important; }
 
         .user-marker {
-            width: 28px; height: 28px;
-            background: var(--accent-sky);
-            border: 3.5px solid white;
+            width: 18px; height: 18px;
+            background: #2979FF;
+            border: 3px solid white;
             border-radius: 50%;
-            box-shadow: 0 0 0 6px rgba(91,164,207,0.3), 0 2px 10px rgba(0,0,0,0.35);
-            animation: user-pulse 2.5s ease-in-out infinite;
+            box-shadow: 0 0 0 6px rgba(41,121,255,0.25), 0 2px 8px rgba(0,0,0,0.4);
+            animation: user-pulse 2s ease-in-out infinite;
         }
         @keyframes user-pulse {
-            0%,100% { box-shadow: 0 0 0 6px rgba(91,164,207,0.3), 0 2px 10px rgba(0,0,0,0.35); }
-            50% { box-shadow: 0 0 0 14px rgba(91,164,207,0.08), 0 2px 10px rgba(0,0,0,0.35); }
+            0%,100% { box-shadow: 0 0 0 6px rgba(41,121,255,0.25), 0 2px 8px rgba(0,0,0,0.4); }
+            50% { box-shadow: 0 0 0 18px rgba(41,121,255,0.05), 0 2px 8px rgba(0,0,0,0.4); }
         }
-        .user-accuracy { border: 2px solid rgba(91,164,207,0.2); background: rgba(91,164,207,0.06); }
+        .user-accuracy { border: 2px solid rgba(41,121,255,0.2); background: rgba(41,121,255,0.06); }
 
         /* ── TOAST ────────────────────────── */
         .toast {
@@ -886,6 +895,16 @@ function initMap() {
         }
     });
 
+    // Re-render marker quando lo zoom attraversa la soglia pallini/icone
+    let lastZoomMode = APP.map.getZoom() < 12 ? 'dots' : 'icons';
+    APP.map.on('zoomend', () => {
+        const newMode = APP.map.getZoom() < 12 ? 'dots' : 'icons';
+        if (newMode !== lastZoomMode) {
+            lastZoomMode = newMode;
+            renderMarkers();
+        }
+    });
+
     loadOverpassData();
 
     // Auto-GPS all'avvio — usa la stessa funzione del pulsante
@@ -913,27 +932,48 @@ async function loadOverpassData() {
     setLoadingStatus('Scaricamento dati da OpenStreetMap...');
     const bbox = `${PIEMONTE.south},${PIEMONTE.west},${PIEMONTE.north},${PIEMONTE.east}`;
 
-    const q = `[out:json][timeout:60];(
-        nwr["tourism"="alpine_hut"](${bbox});
-        nwr["tourism"="wilderness_hut"](${bbox});
-        nwr["amenity"="shelter"]["shelter_type"="basic_hut"](${bbox});
-        nwr["building"="farm"]["name"](${bbox});
-        nwr["landuse"="farmyard"]["name"](${bbox});
-        nwr["building"="hut"]["name"](${bbox});
-        nwr["animal_keeping"](${bbox});
-    );out center tags;`;
+    // Query completa: rifugi + bivacchi + malghe/fattorie alpine
+    const queries = [
+        `[out:json][timeout:60];(
+            nwr["tourism"="alpine_hut"](${bbox});
+            nwr["tourism"="wilderness_hut"](${bbox});
+            nwr["amenity"="shelter"]["shelter_type"="basic_hut"](${bbox});
+            nwr["building"="farm"]["name"](${bbox});
+            nwr["landuse"="farmyard"]["name"](${bbox});
+            nwr["building"="hut"]["name"](${bbox});
+            nwr["animal_keeping"](${bbox});
+        );out center tags;`,
+        // Fallback: solo rifugi e bivacchi (query più leggera)
+        `[out:json][timeout:30];(
+            nwr["tourism"="alpine_hut"](${bbox});
+            nwr["tourism"="wilderness_hut"](${bbox});
+        );out center tags;`
+    ];
 
-    try {
-        const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q) });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        setLoadingStatus(`Elaborazione ${data.elements.length} elementi...`);
-        processElements(data.elements);
-    } catch (err) {
-        console.error('Overpass error:', err);
-        setLoadingStatus('Caricamento dati demo...');
-        loadDemo();
+    for (let i = 0; i < queries.length; i++) {
+        try {
+            console.log(`AlpeggiMap — Overpass query ${i+1}/${queries.length}...`);
+            const res = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: 'data=' + encodeURIComponent(queries[i])
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            console.log(`AlpeggiMap — Overpass ha restituito ${data.elements.length} elementi grezzi`);
+            setLoadingStatus(`Elaborazione ${data.elements.length} elementi...`);
+            processElements(data.elements);
+
+            if (APP.allData.length > 0) return; // Successo!
+            console.warn('AlpeggiMap — 0 risultati dopo i filtri, provo query successiva...');
+        } catch (err) {
+            console.error(`AlpeggiMap — Overpass query ${i+1} fallita:`, err);
+        }
     }
+
+    // Tutte le query fallite → demo
+    console.warn('AlpeggiMap — Tutte le query Overpass fallite, carico dati demo');
+    setLoadingStatus('Caricamento dati demo...');
+    loadDemo();
 }
 
 function processElements(elements) {
@@ -1088,13 +1128,25 @@ function renderMarkers() {
     APP.markers = [];
     let count = 0;
     const search = document.getElementById('searchInput').value.toLowerCase().trim();
+    const zoom = APP.map.getZoom();
+    const useDots = zoom < 12;
+
+    // Colori per i dot marker (corrispondono alla legenda)
+    const dotColors = {
+        rifugio: 'var(--accent-sky)',
+        bivacco: 'var(--accent-gold)',
+        malga: 'var(--accent-primary)',
+        cani: 'var(--accent-danger)',
+        cani_unconfirmed: '#bbb',
+        cani_libera: '#a8c4a0'
+    };
 
     APP.allData.forEach(item => {
         // Filter logic
         if (item.type === 'cani' && !APP.activeFilters.cani) return;
         if (item.type === 'cani_unconfirmed' && !APP.activeFilters.cani_unconfirmed) return;
         if (item.type === 'cani_libera' && !APP.activeFilters.cani_libera) return;
-        if (item.type === 'archiviata') return; // Mai mostrare archiviate
+        if (item.type === 'archiviata') return;
         if (item.type === 'malga' && !APP.activeFilters.malga) return;
         if (item.type === 'rifugio' && !APP.activeFilters.rifugio) return;
         if (item.type === 'bivacco' && !APP.activeFilters.bivacco) return;
@@ -1104,14 +1156,24 @@ function renderMarkers() {
             if (!s.includes(search)) return;
         }
 
-        const mClass = item.type === 'cani_unconfirmed' ? 'marker-cani-unconfirmed' : item.type === 'cani_libera' ? 'marker-cani_libera' : `marker-${item.type}`;
-        const marker = L.marker([item.lat, item.lon], {
-            icon: L.divIcon({
+        let icon;
+        if (useDots) {
+            const color = dotColors[item.type] || '#999';
+            icon = L.divIcon({
+                className: '',
+                html: `<div class="dot-marker" style="background:${color}"></div>`,
+                iconSize: [16, 16], iconAnchor: [8, 8]
+            });
+        } else {
+            const mClass = item.type === 'cani_unconfirmed' ? 'marker-cani-unconfirmed' : item.type === 'cani_libera' ? 'marker-cani_libera' : `marker-${item.type}`;
+            icon = L.divIcon({
                 className: '',
                 html: `<div class="custom-marker ${mClass}"><span class="marker-icon">${item.icon}</span></div>`,
                 iconSize: [44, 44], iconAnchor: [22, 44]
-            })
-        });
+            });
+        }
+
+        const marker = L.marker([item.lat, item.lon], { icon });
         marker.on('click', () => openBottomSheet(item));
         APP.clusterGroup.addLayer(marker);
         APP.markers.push({ marker, data: item });
@@ -1688,7 +1750,17 @@ window.onFirebaseReady = () => { console.log('Firebase connected — reports wil
 document.addEventListener('DOMContentLoaded', initMap);
 
 // Service Worker
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+if ('serviceWorker' in navigator) window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+        // Forza controllo aggiornamento
+        reg.update();
+        // Ricarica quando il nuovo SW è attivo
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) { refreshing = true; location.reload(); }
+        });
+    }).catch(() => {});
+});
 </script>
 </body>
 </html>
